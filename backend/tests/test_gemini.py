@@ -12,6 +12,7 @@ from app.ai.provider import AcademicError, Turn
 
 def provider(effects):
     p = object.__new__(GeminiProvider)
+    p.key = "test-only-key"
     p.model, p.attempts = "test-model", 3
     p.client = SimpleNamespace(
         aio=SimpleNamespace(models=SimpleNamespace(generate_content=AsyncMock(side_effect=effects)))

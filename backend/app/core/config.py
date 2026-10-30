@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     gemini_api_key: SecretStr | None = None
     gemini_model: str = Field(default="gemini-2.5-flash", pattern=r"^[a-zA-Z0-9.\-]+$")
     gemini_attempts: int = Field(default=3, ge=1, le=3)
-    gemini_timeout_seconds: float = Field(default=8, ge=1, le=30)
+    gemini_timeout_seconds: float = Field(default=15, ge=10, le=30)
     chat_user_limit: int = Field(default=20, ge=1)
     chat_timeout_seconds: float = Field(default=20, ge=0.05, le=60)
     chat_context_characters: int = Field(default=24000, ge=4000, le=48000)
