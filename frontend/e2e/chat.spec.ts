@@ -20,18 +20,24 @@ async function newConversation(page: Page) {
     .getByRole("button", { name: "Create a conversation", exact: true })
     .click();
   await expect(page).toHaveURL(/\/app\/chat\/[0-9a-f-]{36}$/);
-  await expect(page.getByLabel("Your question")).toBeEnabled();
+  await expect(
+    page.getByRole("textbox", { name: "Your question", exact: true }),
+  ).toBeEnabled();
   return page.url().split("/").pop()!;
 }
 async function ask(page: Page, question: string, count: number) {
-  await page.getByLabel("Your question").fill(question);
+  await page
+    .getByRole("textbox", { name: "Your question", exact: true })
+    .fill(question);
   await page
     .getByRole("button", { name: "Send question", exact: true })
     .click();
   await expect(
     page.getByRole("article", { name: "EduMind response", exact: true }),
   ).toHaveCount(count);
-  await expect(page.getByLabel("Your question")).toHaveValue("");
+  await expect(
+    page.getByRole("textbox", { name: "Your question", exact: true }),
+  ).toHaveValue("");
 }
 
 test.beforeEach(({ page }) => {
@@ -122,7 +128,7 @@ test("recovers a lost response and replays the same request without duplicate me
     await route.abort("failed");
   });
   await page
-    .getByLabel("Your question")
+    .getByRole("textbox", { name: "Your question", exact: true })
     .fill("Recover this mechanics question");
   await page
     .getByRole("button", { name: "Send question", exact: true })
@@ -170,7 +176,9 @@ test("does not reveal another account’s conversation through a direct link", a
     await expect(
       other.getByText("Private mechanics topic", { exact: true }),
     ).toHaveCount(0);
-    await expect(other.getByLabel("Your question")).toHaveCount(0);
+    await expect(
+      other.getByRole("textbox", { name: "Your question", exact: true }),
+    ).toHaveCount(0);
   } finally {
     await separate.close();
   }
@@ -198,7 +206,9 @@ test("shows an honest unconfigured state while conversation management still wor
     .getByRole("button", { name: "Create a conversation", exact: true })
     .click();
   await expect(page.getByText(/AI answers aren’t connected yet/)).toBeVisible();
-  await expect(page.getByLabel("Your question")).toBeDisabled();
+  await expect(
+    page.getByRole("textbox", { name: "Your question", exact: true }),
+  ).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "Send question", exact: true }),
   ).toBeDisabled();
