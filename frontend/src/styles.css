@@ -1,0 +1,244 @@
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: #173a35;
+  background: #f6f7f2;
+  font-synthesis: none;
+  --accent: #bce375;
+  --muted: #52665f;
+  --line: #d9e0d6;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+a {
+  color: inherit;
+}
+header,
+main,
+footer {
+  max-width: 1240px;
+  margin: auto;
+}
+header {
+  padding: 30px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+}
+.brand {
+  font-size: 23px;
+  font-weight: 750;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mark {
+  display: grid;
+  place-items: center;
+  background: #173a35;
+  color: var(--accent);
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  margin-right: 6px;
+}
+.ai {
+  font-weight: 400;
+}
+.badge {
+  font-size: 12px;
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  padding: 9px 13px;
+}
+main {
+  padding: 75px 40px 40px;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 65px;
+}
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-weight: 650;
+  font-size: 11px;
+  margin: 0 0 26px;
+}
+h1 {
+  font-size: clamp(38px, 4.6vw, 62px);
+  font-weight: 550;
+  letter-spacing: -2.8px;
+  line-height: 1.1;
+  margin: 0 0 26px;
+}
+h1 span {
+  color: #668475;
+}
+.lead {
+  font-size: 17px;
+  line-height: 1.8;
+  max-width: 460px;
+  color: var(--muted);
+}
+.principle {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 45px;
+}
+.principle > span {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-size: 24px;
+}
+.principle p {
+  font-size: 12px;
+  color: var(--muted);
+}
+strong {
+  display: block;
+  color: #173a35;
+  font-size: 13px;
+  margin-top: 5px;
+}
+.foundation {
+  background: #e9eee3;
+  border: 1px solid #dae3d2;
+  border-radius: 22px;
+  padding: 32px;
+}
+.foundation h2 {
+  font-size: 28px;
+  font-weight: 550;
+  letter-spacing: -0.8px;
+  margin: 0 0 18px;
+}
+.foundation > p:not(.eyebrow) {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.status {
+  background: #f9fbf4;
+  border-radius: 14px;
+  padding: 20px;
+  margin-top: 24px;
+}
+.status-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.status p {
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 23px;
+}
+button {
+  border: 0;
+  background: #173a35;
+  color: white;
+  border-radius: 8px;
+  padding: 12px 17px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+button span {
+  margin-left: 18px;
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+:focus-visible {
+  outline: 3px solid #458522;
+  outline-offset: 4px;
+}
+.foundation .note {
+  font-size: 11px !important;
+  margin-bottom: 0;
+}
+.pillars {
+  grid-column: 1/-1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 30px;
+  border-top: 1px solid var(--line);
+  padding-top: 30px;
+  margin-top: 5px;
+}
+.pillars article > span {
+  color: #6b846e;
+  font-size: 12px;
+}
+.pillars h2 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 14px 0 10px;
+}
+.pillars p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 285px;
+}
+footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 25px 40px 35px;
+  color: var(--muted);
+  font-size: 11px;
+}
+@media (max-width: 760px) {
+  header {
+    padding: 20px;
+  }
+  .brand {
+    font-size: 18px;
+  }
+  .badge {
+    font-size: 10px;
+    padding: 8px;
+  }
+  main {
+    padding: 40px 22px 25px;
+    grid-template-columns: 1fr;
+    gap: 34px;
+  }
+  h1 {
+    letter-spacing: -1.8px;
+  }
+  .principle {
+    margin-top: 25px;
+  }
+  .foundation {
+    padding: 24px;
+  }
+  .pillars {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .pillars article {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 15px;
+  }
+  .pillars p {
+    max-width: none;
+  }
+  footer {
+    padding: 20px 22px;
+    gap: 20px;
+    line-height: 1.5;
+  }
+}
