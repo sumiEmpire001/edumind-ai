@@ -113,6 +113,13 @@ jobs:
         working-directory: frontend
       - run: npm run test:e2e
         working-directory: frontend
+      - name: Preserve browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-diagnostics
+          path: frontend/test-results
+          retention-days: 1
 
   local-inbox:
     strategy:
@@ -128,4 +135,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m unittest -v test_inbox
+      - run: python run_tests.py
+      - name: Preserve inbox failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inbox-test-diagnostics-${{ matrix.os }}
+          path: services/knowledge-inbox/test-output.txt
+          retention-days: 1

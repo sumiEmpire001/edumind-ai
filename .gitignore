@@ -22,3 +22,5 @@ playwright-report/
 # Local knowledge inbox state and private documents
 EduMind-Knowledge-Inbox/
 services/knowledge-inbox/journal.sqlite3*
+
+services/knowledge-inbox/test-output.txt

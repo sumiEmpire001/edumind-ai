@@ -1,5 +1,4 @@
 import hashlib
-import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -134,7 +133,7 @@ class InboxTests(unittest.TestCase):
         self.file()
         self.stage()
         self.inbox.scan_once()
-        data = sqlite3.connect(self.root / "journal.sqlite3").iterdump()
+        data = self.inbox.db.iterdump()
         self.assertNotIn("emi_", "\n".join(data))
 
     def test_http_and_redirect_credentials_rejected(self):
