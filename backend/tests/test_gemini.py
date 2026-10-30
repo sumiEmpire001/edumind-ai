@@ -46,6 +46,15 @@ def test_image_bytes_are_passed_as_inline_parts():
     assert content.parts[1].inline_data.mime_type == "image/png"
 
 
+def test_flash_reasoning_is_bounded_without_relaxing_answer_limit():
+    p = provider([reply()])
+    p.model = "gemini-2.5-flash"
+    asyncio.run(p.generate([Turn("user", "Draft a substantive report section.")]))
+    config = p.client.aio.models.generate_content.call_args.kwargs["config"]
+    assert config.thinking_config.thinking_budget == 128
+    assert config.max_output_tokens == 2400
+
+
 @pytest.mark.parametrize(
     "status,code,calls",
     [(429, "rate_limited", 3), (503, "provider_failure", 3), (401, "provider_failure", 1)],

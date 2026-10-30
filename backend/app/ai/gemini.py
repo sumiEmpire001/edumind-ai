@@ -60,10 +60,21 @@ class GeminiProvider:
                     config=types.GenerateContentConfig(
                         system_instruction=SYSTEM,
                         max_output_tokens=2400,
+                        # Dynamic thinking can exhaust a short answer's token/time budget.
+                        # Bound it for the supported Flash models while retaining reasoning.
+                        thinking_config=(
+                            types.ThinkingConfig(thinking_budget=128)
+                            if self.model.startswith("gemini-2.5-flash")
+                            else None
+                        ),
                     ),
                 )
                 candidates = response.candidates or []
                 if not candidates or candidates[0].finish_reason != types.FinishReason.STOP:
+                    logger.warning(
+                        "gemini_incomplete reason=%s",
+                        candidates[0].finish_reason if candidates else "no_candidate",
+                    )
                     raise AcademicError("provider_failure")
                 answer = response.text
                 if not answer or not answer.strip():
