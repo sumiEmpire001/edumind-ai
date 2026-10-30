@@ -40,8 +40,26 @@ def engine():
             "DATABASE_URL": isolated.render_as_string(hide_password=False),
             "APP_ENV": "test",
         }
-        subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], env=env, check=True)
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "alembic",
+                "-x",
+                f"version_table_schema={schema}",
+                "upgrade",
+                "head",
+            ],
+            env=env,
+            check=True,
+        )
         test_engine = create_engine(isolated)
+        with test_engine.connect() as connection:
+            for table in ("users", "knowledge_chunks", "alembic_version"):
+                assert connection.scalar(
+                    text("SELECT to_regclass(:qualified)"),
+                    {"qualified": f"{schema}.{table}"},
+                ), f"Missing isolated test table: {table}"
     else:
         test_engine = create_engine(
             "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
@@ -219,6 +237,60 @@ def test_missing_origin_is_rejected(api):
     client, _, _ = api
     del client.headers["origin"]
     assert register(client).status_code == 403
+
+
+def test_same_origin_csrf_get_uses_trusted_referer(api):
+    client, _, _ = api
+    register(client)
+    result = login(client)
+    del client.headers["origin"]
+    headers = {"Referer": ORIGIN + "/app/account"}
+    response = client.get("/api/v1/auth/csrf", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["csrf_token"] == result.json()["csrf_token"]
+    # The fallback never permits a cookie-authenticated write without Origin.
+    assert (
+        client.post(
+            "/api/v1/auth/refresh",
+            headers={**headers, "X-CSRF-Token": result.json()["csrf_token"]},
+        ).status_code
+        == 403
+    )
+    client.cookies.clear()
+    assert client.get("/api/v1/auth/csrf", headers=headers).status_code == 401
+
+
+@pytest.mark.parametrize(
+    "referer",
+    [
+        "",
+        "https://evil.example/app",
+        ORIGIN + ".evil.example/app",
+        "http://localhost:51730/app",
+        "http://localhost:5173@evil.example/app",
+        "http://user:pass@localhost:5173/app",
+        "null",
+        "http://[invalid/app",
+    ],
+)
+def test_csrf_get_rejects_untrusted_or_malformed_referer(api, referer):
+    client, _, _ = api
+    del client.headers["origin"]
+    assert client.get("/api/v1/auth/csrf", headers={"Referer": referer}).status_code == 403
+
+
+def test_explicit_untrusted_origin_cannot_use_referer_fallback(api):
+    client, _, _ = api
+    assert (
+        client.get(
+            "/api/v1/auth/csrf",
+            headers={
+                "Origin": "https://evil.example",
+                "Referer": ORIGIN + "/app",
+            },
+        ).status_code
+        == 403
+    )
 
 
 def test_logout_revokes_access_and_refresh_and_clears_cookies(api):

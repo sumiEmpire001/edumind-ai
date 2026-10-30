@@ -24,3 +24,18 @@ production-ready until those checks are complete.
 Deferred: public API products, native mobile app, institutional tenancy, billing,
 recommendations, additional AI providers and advanced analytics. Do not implement now.
 
+## Completion audit
+
+| Scope | State | Outstanding evidence |
+|---|---|---|
+| Phases 1–5 | Implemented, CI verified, hosted core flows verified | Full deployed browser coverage remains in QA |
+| Phases 6–8 | Implemented, automated workflow checks passed | Real private storage, worker, administrator and hosted document/RAG flows |
+| Phase 9 | Implemented, Linux/Windows CI verified | User's actual Windows folder and real scoped credential |
+| Phase 10 | Regression suites passed; release rehearsals added | New rehearsal CI, human real-model evaluation, hosted browser/load assessment |
+| Phase 11 | Core frontend/API/database deployed | Hosted document activation, hosted backup restore, automatic Vercel source integration |
+| Phase 12 | Code fixes, audits and operations documentation present | Final sign-off after the remaining gates |
+
+The user paused paid worker provisioning. Complete available isolated verification first;
+do not replace missing hosted evidence with a claim of full roadmap completion. See
+[release rehearsals](release-rehearsals.md) and [remaining gates](final-readiness.md).
+

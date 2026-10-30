@@ -25,7 +25,15 @@ def run_migrations_online():
     )
     try:
         with engine.connect() as connection:
-            context.configure(connection=connection, target_metadata=Base.metadata)
+            context.configure(
+                connection=connection,
+                target_metadata=Base.metadata,
+                # Explicit isolation for disposable schema tests. Otherwise a public
+                # alembic_version on search_path can make a fresh schema look migrated.
+                version_table_schema=context.get_x_argument(as_dictionary=True).get(
+                    "version_table_schema"
+                ),
+            )
             with context.begin_transaction():
                 context.run_migrations()
     finally:
