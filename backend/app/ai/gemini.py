@@ -68,6 +68,7 @@ class GeminiProvider:
                     raise AcademicError("provider_failure")
                 return answer.strip()
             except errors.APIError as exc:
+                logger.error("gemini_api_error status=%s", exc.code)
                 code = "rate_limited" if exc.code == 429 else "provider_failure"
                 retry = exc.code in {429, 500, 502, 503, 504}
             except (httpx.TimeoutException, TimeoutError):
