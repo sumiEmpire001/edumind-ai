@@ -39,3 +39,15 @@ The user paused paid worker provisioning. Complete available isolated verificati
 do not replace missing hosted evidence with a claim of full roadmap completion. See
 [release rehearsals](release-rehearsals.md) and [remaining gates](final-readiness.md).
 
+## Studio extension
+
+The additional ChatGPT-style document request is implemented separately from knowledge
+processing: saved outlines, sequential section generation with recovery, editing and
+expansion, report/answer/conversation PDF export, and private personal image/text context.
+See [the idea](studio-plan.md) and [release evidence](studio-report.md).
+
+Text drafting and PDF exports use the existing API without a paid worker. Personal
+attachments remain unavailable on the hosted app until its private storage credential is
+configured. Image generation is disabled. These new features do not close the original
+administrator, reviewed knowledge, worker, hosted restore or Windows-folder gates above.
+

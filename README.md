@@ -6,6 +6,13 @@ AI academic support platform with student conversations, live Gemini answers,
 contributor applications, private document submissions, administrator review,
 approved-source retrieval and a separate Windows-compatible knowledge inbox.
 
+Document Studio adds saved long-form reports, editable outlines, section drafting and
+expansion, and PDF exports with a cover, contents and numbered pages. Study chat also
+exports answers and conversations. See the [Studio idea and scope](docs/studio-plan.md)
+and [implementation evidence](docs/studio-report.md). Target lengths guide drafting;
+exports show the actual pages. Personal PNG/JPEG/TXT attachments require private storage
+configuration. Image generation remains disabled.
+
 The hosted test app is at https://edumind-ai-an-empire.vercel.app/ . Live Gemini chat
 is verified. The document workflows and local inbox are implemented and tested;
 hosted storage, a separately approved worker, administrator bootstrap and real-corpus
@@ -87,7 +94,7 @@ npm run dev
 ```
 
 Open http://localhost:5173. Start the backend and apply its migrations before signing in.
-The frontend includes landing, registration/login, workspace, account, study chat and
+The frontend includes landing, registration/login, workspace, account, study chat, Studio and
 role-aware knowledge-library pages. Gemini is available only when the backend key is
 configured; uploads report unavailable until private storage is configured.
 Only `VITE_API_BASE_URL` is public configuration; never put secrets in Vite variables.
@@ -138,6 +145,8 @@ npm audit --audit-level=high
 - [Local inbox setup](services/knowledge-inbox/README.md)
 - [Final implementation](docs/phase-9-12-report.md)
 - [Release readiness and remaining gates](docs/final-readiness.md)
+- [Studio idea and scope](docs/studio-plan.md)
+- [Studio release evidence](docs/studio-report.md)
 
 ## Source control
 

@@ -6,6 +6,21 @@ gate below has evidence.
 
 ## Completed evidence
 
+- Studio extension PRs #8–#11 are merged. API release
+  f304e61d1f73e600646933b81f5699ba2bf49ea7 is deployed as Render
+  dep-dbiioe8473hc73d7ulb0 (live). Vercel dpl_38PqawLKe8e2SroV9mPmWQcwxUfY
+  is READY on frontend release 35bd6f638912a82b07400f0823f0c5e4b0191b54.
+  GitHub run 41146020236 passed all jobs after run 41144322302 passed
+  165 PostgreSQL backend tests, 50 frontend
+  tests, 30 desktop/mobile browser cases, audits and both inbox platforms. See
+  [Studio release evidence](studio-report.md) for deployment verification and limits.
+  Personal attachments still require private storage; image generation is disabled.
+  A hosted 11,400-word synthetic draft exported as 31 actual, nonempty PDF pages,
+  and a short live Gemini answer succeeded. Long AI report generation has a separate
+  hosted verification gate: the final attempt returned Gemini HTTP 429 (quota/rate limit).
+  No billing was enabled. See the Studio report for the exact verified scope.
+  This extension does not close the remaining hosted gates below.
+
 - Follow-up QA PR #7 is merged (4ab6333f465c2b89524b94df02d2993c12277174).
   GitHub run 41134952520 passed all jobs: 144 PostgreSQL backend tests without skips,
   45 frontend tests, 26 same-origin desktop/mobile browser tests, audits and 11 inbox
