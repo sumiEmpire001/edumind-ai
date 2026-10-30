@@ -1,5 +1,6 @@
 import csv
 import io
+import posixpath
 import re
 import zipfile
 from pathlib import PurePath
@@ -26,6 +27,8 @@ def validate(filename, data, mime):
     if ext == ".pdf" and not data.startswith(b"%PDF-"):
         raise ValueError("invalid_pdf")
     if ext in {".docx", ".pptx"}:
+        if not data.startswith(b"PK\x03\x04"):
+            raise ValueError("invalid_office_signature")
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             entries = archive.infolist()
             if len(entries) > 1500 or sum(i.file_size for i in entries) > 20 * MAX_BYTES:
@@ -70,18 +73,43 @@ def extract(filename, data, mime):
         ]
     elif ext in {".docx", ".pptx"}:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
-            names = (
-                ["word/document.xml"]
-                if ext == ".docx"
-                else sorted(
-                    n for n in archive.namelist() if re.fullmatch(r"ppt/slides/slide\d+\.xml", n)
+            if "docProps/core.xml" in archive.namelist():
+                core = ElementTree.fromstring(archive.read("docProps/core.xml"))
+                fields = {"creator": "author", "title": "embedded_title", "subject": "subject"}
+                for item in core:
+                    key = fields.get(item.tag.rsplit("}", 1)[-1])
+                    if key and item.text and item.text.strip():
+                        metadata[key] = item.text.strip()[:200]
+            names = ["word/document.xml"]
+            if ext == ".pptx":
+                presentation = ElementTree.fromstring(archive.read("ppt/presentation.xml"))
+                relationships = ElementTree.fromstring(
+                    archive.read("ppt/_rels/presentation.xml.rels")
                 )
-            )
+                targets = {
+                    item.get("Id"): item.get("Target")
+                    for item in relationships
+                    if item.get("TargetMode") != "External"
+                }
+                names = []
+                for item in presentation.iter():
+                    if item.tag.endswith("}sldId"):
+                        rid = item.get(
+                            "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
+                        )
+                        target = targets.get(rid)
+                        if not target:
+                            raise ValueError("invalid_slide_reference")
+                        name = posixpath.normpath("ppt/" + target)
+                        if not name.startswith("ppt/slides/") or name not in archive.namelist():
+                            raise ValueError("invalid_slide_reference")
+                        names.append(name)
+                metadata["slide_count"] = len(names)
             for i, name in enumerate(names):
                 root = ElementTree.fromstring(archive.read(name))
                 sections.append(
                     (
-                        f"Section {i + 1}",
+                        f"Slide {i + 1}" if ext == ".pptx" else "Document text",
                         " ".join(e.text or "" for e in root.iter() if e.tag.endswith("}t")),
                     )
                 )

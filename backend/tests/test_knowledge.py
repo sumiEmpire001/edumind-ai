@@ -352,3 +352,42 @@ def test_exhausted_crash_lease_becomes_recoverable(knowledge):
         job = db.scalar(select(ProcessingJob))
         assert job.state == "failed" and job.error_code == "attempts_exhausted"
         assert db.scalar(select(KnowledgeDocument)).processing_status == "failed"
+
+
+def test_powerpoint_follows_presentation_order_and_real_metadata():
+    import io
+    import zipfile
+
+    from app.knowledge.extract import MIMES
+
+    data = io.BytesIO()
+    with zipfile.ZipFile(data, "w") as archive:
+        archive.writestr("[Content_Types].xml", "<Types/>")
+        archive.writestr(
+            "ppt/presentation.xml",
+            '<p:presentation xmlns:p="urn:p" '
+            'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            '<p:sldIdLst><p:sldId r:id="second"/><p:sldId r:id="first"/>'
+            "</p:sldIdLst></p:presentation>",
+        )
+        archive.writestr(
+            "ppt/_rels/presentation.xml.rels",
+            '<Relationships><Relationship Id="first" Target="slides/slide1.xml"/>'
+            '<Relationship Id="second" Target="slides/slide2.xml"/></Relationships>',
+        )
+        archive.writestr(
+            "ppt/slides/slide1.xml", '<a:root xmlns:a="urn:a"><a:t>First file</a:t></a:root>'
+        )
+        archive.writestr(
+            "ppt/slides/slide2.xml",
+            '<a:root xmlns:a="urn:a"><a:t>Actually first in presentation</a:t></a:root>',
+        )
+        archive.writestr(
+            "docProps/core.xml",
+            '<core xmlns:dc="urn:dc"><dc:creator>Provided Author</dc:creator></core>',
+        )
+    sections, metadata = extract("slides.pptx", data.getvalue(), MIMES[".pptx"])
+    assert sections[0] == ("Slide 1", "Actually first in presentation")
+    assert metadata["author"] == "Provided Author"
+    assert metadata["slide_count"] == 2
+    assert "institution" not in metadata

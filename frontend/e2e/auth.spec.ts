@@ -123,6 +123,9 @@ test("changes a password and requires the new credentials", async ({
   await page
     .getByLabel("Confirm new password", { exact: true })
     .fill(pass + "-updated");
+  await expect(page.getByLabel("Current password", { exact: true })).toHaveValue(pass);
+  await expect(page.getByLabel("New password", { exact: true })).toHaveValue(pass + "-updated");
+  await expect(page.getByLabel("Confirm new password", { exact: true })).toHaveValue(pass + "-updated");
   await page
     .getByRole("button", { name: "Change password", exact: true })
     .click();

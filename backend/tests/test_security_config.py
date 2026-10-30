@@ -21,3 +21,20 @@ def test_missing_secret_has_no_fallback(monkeypatch):
 def test_cross_site_cookies_require_https_production():
     with pytest.raises(ValidationError):
         Settings(database_url=URL, cookie_samesite="none")
+
+
+def test_production_storage_cannot_send_credentials_over_plain_http():
+    import secrets
+
+    import pytest
+
+    from app.core.config import Settings
+
+    with pytest.raises(ValueError, match="HTTPS"):
+        Settings(
+            app_env="production",
+            jwt_secret=secrets.token_urlsafe(48),
+            database_url="postgresql+psycopg://u:p@db.example/db?sslmode=verify-full",
+            cors_origins=["https://example.com"],
+            storage_endpoint="http://storage.example",
+        )

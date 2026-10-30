@@ -10,7 +10,11 @@ class BodyLimitMiddleware:
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http" or scope["method"] not in {"POST", "PUT", "PATCH"}:
             return await self.app(scope, receive, send)
-        limit = 3 * 1024 * 1024 if scope["path"] == "/api/v1/knowledge/submissions" else self.limit
+        limit = (
+            3 * 1024 * 1024
+            if scope["path"] in {"/api/v1/knowledge/submissions", "/api/v1/inbox/submissions"}
+            else self.limit
+        )
         body = bytearray()
         while True:
             message = await receive()
