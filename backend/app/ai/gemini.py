@@ -68,7 +68,21 @@ class GeminiProvider:
                     raise AcademicError("provider_failure")
                 return answer.strip()
             except errors.APIError as exc:
-                logger.error("gemini_api_error status=%s", exc.code)
+                raw = str(exc).lower()
+                reason = "request_rejected"
+                for needle, label in [
+                    ("api key expired", "key_expired"),
+                    ("api key not valid", "key_invalid"),
+                    ("api_key_invalid", "key_invalid"),
+                    ("reported as leaked", "key_leaked"),
+                    ("location is not supported", "region_unsupported"),
+                    ("not found", "model_unavailable"),
+                    ("billing", "billing_required"),
+                ]:
+                    if needle in raw:
+                        reason = label
+                        break
+                logger.error("gemini_api_error status=%s reason=%s", exc.code, reason)
                 code = "rate_limited" if exc.code == 429 else "provider_failure"
                 retry = exc.code in {429, 500, 502, 503, 504}
             except (httpx.TimeoutException, TimeoutError):
