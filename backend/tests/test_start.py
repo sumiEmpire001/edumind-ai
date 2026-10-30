@@ -31,3 +31,25 @@ def test_failed_migration_stops_without_secret_logs(monkeypatch, caplog):
     run.assert_not_called()
     assert "missing_ca_certificate" in caplog.text
     assert "SECRET" not in caplog.text
+
+
+def test_render_private_tls_is_scoped(monkeypatch):
+    from app.core.config import Settings
+
+    monkeypatch.setenv("RENDER", "true")
+    config = Settings(
+        app_env="production",
+        database_url="postgresql+psycopg://u:p@dpg-example/db?sslmode=verify-full",
+        jwt_secret="a" * 48,
+        cors_origins=["https://example.com"],
+        render_private_database_host="dpg-example",
+    )
+    assert "sslmode=require" in config.database_url.get_secret_value()
+    with pytest.raises(ValueError):
+        Settings(
+            app_env="production",
+            database_url="postgresql+psycopg://u:p@other.example/db?sslmode=require",
+            jwt_secret="a" * 48,
+            cors_origins=["https://example.com"],
+            render_private_database_host="dpg-example",
+        )

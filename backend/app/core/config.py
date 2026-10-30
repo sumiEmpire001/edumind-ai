@@ -10,6 +10,7 @@ from sqlalchemy.engine import make_url
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
     app_env: Literal["development", "test", "production"] = "development"
+    render_private_database_host: str | None = None
     database_url: SecretStr
     cors_origins: list[str] = ["http://localhost:5173"]
     jwt_secret: SecretStr
@@ -90,7 +91,19 @@ class Settings(BaseSettings):
             raise ValueError("SameSite=None requires production HTTPS secure cookies")
         if self.app_env == "production":
             url = make_url(self.database_url.get_secret_value())
-            if url.query.get("sslmode") not in {"verify-ca", "verify-full"}:
+            import os
+
+            private = (
+                os.environ.get("RENDER") == "true"
+                and self.render_private_database_host == url.host
+                and (url.host or "").startswith("dpg-")
+                and "." not in (url.host or "")
+            )
+            if private:
+                # Render documents self-signed certificates for its private network.
+                url = url.update_query_dict({"sslmode": "require", "sslrootcert": ""})
+                self.database_url = SecretStr(url.render_as_string(hide_password=False))
+            if not private and url.query.get("sslmode") not in {"verify-ca", "verify-full"}:
                 raise ValueError("Production database connections must verify TLS certificates")
             if not self.cors_origins or any(
                 not o.startswith("https://") for o in self.cors_origins
