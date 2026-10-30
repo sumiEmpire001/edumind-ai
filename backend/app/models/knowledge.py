@@ -8,6 +8,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -82,7 +83,15 @@ class KnowledgeChunk(Base):
     location: Mapped[str] = mapped_column(String(100))
     content: Mapped[str] = mapped_column(Text)
     embedding: Mapped[list] = mapped_column(Vector(768).with_variant(JSON, "sqlite"))
-    __table_args__ = (UniqueConstraint("document_id", "version", "ordinal"),)
+    __table_args__ = (
+        UniqueConstraint("document_id", "version", "ordinal"),
+        Index(
+            "ix_knowledge_chunks_vector",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
 
 
 class ProcessingJob(Base):

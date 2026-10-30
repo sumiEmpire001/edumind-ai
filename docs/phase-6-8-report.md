@@ -1,6 +1,6 @@
 # Connected contributor, administration and retrieval milestone
 
-30 October 2026. Local implementation verified; GitHub publication blocked by automatic approval review. Hosted activation has separate gates.
+30 October 2026. Local implementation verified and published in PR #5 with user approval. Cloud CI is in progress; hosted activation has separate gates.
 
 ## Implemented
 
@@ -29,9 +29,10 @@
 
 Frontend snapshot: Vercel project edumind-ai, team AnEmpire; API requests proxy through the
 frontend origin to avoid relying on third-party refresh cookies. GitHub integration is not
-installed in Vercel, so source snapshots are used for now. Default Vercel sign-in protection
-remains enabled. Automatic approval review rejected both removing protection and generating
-a temporary share link. No alternate access bypass has been used.
+installed in Vercel, so source snapshots are used for now. The user explicitly approved removing Vercel sign-in protection; it is now disabled.
+EduMind authentication and backend role checks remain enforced. A live HTTP test through
+the frontend API proxy passed registration, login, Gemini generation, conversation persistence
+and logout. GitHub integration in Vercel remains unconnected.
 
 Render backend remains on the verified Phase 5 branch until this milestone passes CI.
 Its private PostgreSQL connection uses Render's documented encrypted private-network mode
@@ -73,6 +74,8 @@ retention and physical deletion are operations follow-ups. Contributor requests 
 at 50; admin user management currently displays the first 100 accounts. No inbox watcher
 (Phase 9), mobile app, subscriptions or other future-expansion feature is included.
 
-Publication was rejected by automatic approval review because explicit approval for the
-Phase 6–8 payload to sumiEmpire001/edumind-ai was required. No Phase 6–8 source was uploaded,
-no CI result is claimed, and the Render backend remains on Phase 5.
+Publication initially required explicit approval, which the user subsequently supplied.
+PR #5 contains the source. The first PostgreSQL run passed 118 tests and found one
+Alembic metadata drift: the HNSW index was declared in the migration but missing from
+SQLAlchemy metadata. The model declaration is corrected; all jobs rerun on the fix.
+Render remains on Phase 5 until cloud verification finishes.

@@ -31,5 +31,5 @@ Original private objects and past source records remain after removal from retri
 
 Vercel frontend configuration: VITE_API_BASE_URL=/ and an API rewrite before SPA fallback.
 Render CORS_ORIGINS must name the exact frontend origin. Keep secure HttpOnly cookies and
-CSRF origin checks enabled. Vercel protection currently prevents anonymous site visits;
-public access requires separate explicit approval after automatic review rejection.
+CSRF origin checks enabled. The user approved public frontend access; Vercel protection is disabled. EduMind login
+and role checks remain mandatory for protected workflows.
