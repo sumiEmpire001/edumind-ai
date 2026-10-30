@@ -16,3 +16,5 @@ uploads/
 EduMind-Knowledge-Inbox/
 .DS_Store
 *.tsbuildinfo
+test-results/
+playwright-report/
