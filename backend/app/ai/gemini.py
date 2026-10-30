@@ -59,7 +59,7 @@ class GeminiProvider:
                     contents=contents,
                     config=types.GenerateContentConfig(
                         system_instruction=SYSTEM,
-                        max_output_tokens=2400,
+                        max_output_tokens=4096,
                         # Dynamic thinking can exhaust a short answer's token/time budget.
                         # Bound it for the supported Flash models while retaining reasoning.
                         thinking_config=(
