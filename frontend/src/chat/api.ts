@@ -29,7 +29,7 @@ export interface Detail {
 }
 export interface Capabilities {
   available: boolean;
-  mode: "unconfigured" | "verification";
+  mode: "unconfigured" | "verification" | "gemini";
   timeout_seconds: number;
 }
 export const validId = (id: string) =>
@@ -108,7 +108,7 @@ export class ChatApi {
     const c = record(await this.client.request("/chat/capabilities"));
     if (
       typeof c.available !== "boolean" ||
-      !["unconfigured", "verification"].includes(String(c.mode)) ||
+      !["unconfigured", "verification", "gemini"].includes(String(c.mode)) ||
       typeof c.timeout_seconds !== "number" ||
       c.timeout_seconds <= 0 ||
       c.timeout_seconds > 60

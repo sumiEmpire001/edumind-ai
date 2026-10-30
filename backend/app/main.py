@@ -9,7 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.ai.provider import AcademicProvider, UnconfiguredProvider
+from app.ai.gemini import build_provider
+from app.ai.provider import AcademicProvider
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
 from app.api.health import router
@@ -35,6 +36,9 @@ def create_app(
             yield
         finally:
             app.state.engine.dispose()
+            close = getattr(app.state.academic_provider, "aclose", None)
+            if close is not None:
+                await close()
 
     app = FastAPI(
         title="EduMind AI API",
@@ -45,7 +49,7 @@ def create_app(
         openapi_url=None if config.app_env == "production" else "/openapi.json",
     )
     app.state.settings = config
-    app.state.academic_provider = provider or UnconfiguredProvider()
+    app.state.academic_provider = provider or build_provider(config)
     app.add_middleware(BodyLimitMiddleware, limit=config.max_request_bytes)
     app.add_middleware(
         CORSMiddleware,
