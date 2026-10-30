@@ -54,6 +54,9 @@ export function WorkspaceLayout() {
           <NavLink to="/app" end onClick={() => setOpen(false)}>
             <span aria-hidden="true">⌂</span> Overview
           </NavLink>
+          <NavLink to="/app/chat" onClick={() => setOpen(false)}>
+            <span aria-hidden="true">✦</span> Study chat
+          </NavLink>
           <NavLink to="/app/account" onClick={() => setOpen(false)}>
             <span aria-hidden="true">◎</span> My account
           </NavLink>

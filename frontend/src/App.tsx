@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Link, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
 import { SessionClient } from "./auth/session";
@@ -8,6 +8,24 @@ import { Landing } from "./pages/Landing";
 import { AuthPage } from "./pages/AuthPage";
 import { Overview } from "./pages/Overview";
 import { Account } from "./pages/Account";
+import { RouteBoundary } from "./components/RouteBoundary";
+const Chat = lazy(() => import("./pages/Chat"));
+function ChatRoute() {
+  const location = useLocation();
+  return (
+    <RouteBoundary key={location.pathname}>
+      <Suspense
+        fallback={
+          <main id="main-content" className="workspace-main" role="status">
+            Opening study chat…
+          </main>
+        }
+      >
+        <Chat />
+      </Suspense>
+    </RouteBoundary>
+  );
+}
 
 function RouteEffects() {
   const { pathname, hash } = useLocation();
@@ -19,7 +37,7 @@ function RouteEffects() {
       "/app": "Your workspace",
       "/app/account": "My account",
     };
-    document.title = `${titles[pathname] || "Page not found"} · EduMind AI`;
+    document.title = `${titles[pathname] || (pathname.startsWith("/app/chat") ? "Study chat" : "Page not found")} · EduMind AI`;
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView?.();
     else {
       window.scrollTo?.(0, 0);
@@ -46,6 +64,8 @@ export default function App({ client }: { client?: SessionClient }) {
           <Route path="/app" element={<WorkspaceLayout />}>
             <Route index element={<Overview />} />
             <Route path="account" element={<Account />} />
+            <Route path="chat" element={<ChatRoute />} />
+            <Route path="chat/:conversationId" element={<ChatRoute />} />
           </Route>
         </Route>
         <Route

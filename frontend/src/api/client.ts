@@ -40,11 +40,12 @@ export function errorMessage(
 export async function apiJson(
   path: string,
   init: RequestInit = {},
+  timeoutMs = 12000,
 ): Promise<unknown> {
   // Vite's dev proxy supports local preview. Production requires an explicit API origin.
   if (import.meta.env.PROD && !configured) throw new ApiError(503);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 12000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     let response: Response;
     try {

@@ -1,7 +1,7 @@
 # Roadmap and verification gates
 
 Work on one phase at a time. Stop at an unmet gate and record evidence; compilation
-alone never satisfies a functional gate. Phases 1–3 are verified. Phases 2 and 3 are delivered in stacked PRs #1 and #2. Phase 4 has not started.
+alone never satisfies a functional gate. Phases 1–3 are verified. Phase 4 conversation implementation is under PostgreSQL/browser verification. Live Gemini integration remains Phase 5.
 
 | Phase | Deliverable | Required gate before next phase |
 |---|---|---|

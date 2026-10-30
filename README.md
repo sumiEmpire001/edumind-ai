@@ -3,11 +3,13 @@
 **Teach students, not just answer questions.**
 
 AI academic support platform, built in verified phases. This repository currently
-contains the **Phases 1–3 foundation, authentication and frontend**: React/Vite shell,
+contains the **Phases 1–4 foundation, authentication, frontend and conversations**: React/Vite shell,
 FastAPI, PostgreSQL/pgvector migrations, student registration, login, rotating sessions,
 backend role permissions, user management, tests, CI and documentation.
 It is not a production-ready learning platform yet. Registration, login and account pages
-are implemented; AI calls, uploads, RAG indexing and the local watcher arrive in later phases.
+and private conversation history are implemented. Live AI calls, uploads, approved RAG
+indexing and the local watcher arrive in later phases. Phase 4 uses an explicitly isolated
+test provider; normal startup does not fabricate AI answers.
 
 ## Requirements
 
@@ -82,7 +84,9 @@ npm run dev
 ```
 
 Open http://localhost:5173. Start the backend and apply its migrations before signing in.
-The frontend includes the landing, registration/login, protected workspace and account pages.
+The frontend includes the landing, registration/login, protected workspace, account and
+study-chat pages. The normal server supports conversation management and clearly reports
+that live academic answers are not connected until Phase 5.
 Only `VITE_API_BASE_URL` is public configuration; never put secrets in Vite variables.
 
 ## Verification
@@ -123,11 +127,13 @@ npm audit --audit-level=high
 - [Phase 2 development report](docs/phase-2-report.md)
 - [Frontend authentication and browser tests](docs/frontend-authentication.md)
 - [Phase 3 development report](docs/phase-3-report.md)
+- [Conversation architecture and testing](docs/conversations.md)
+- [Phase 4 development report](docs/phase-4-report.md)
 
 ## Source control
 
 Repository: https://github.com/sumiEmpire001/edumind-ai
 
-Phase 3 is stacked on the Phase 2 branch until PR #1 is merged. Use feature branches and pull requests. Require both CI jobs
+Phase 4 is stacked on Phase 3, which is stacked on Phase 2 until earlier PRs are merged. Use feature branches and pull requests. Require both CI jobs
 before merging when repository settings allow it. Do not commit `.env`, uploads,
 databases, tokens, or private academic materials. Cloud deployment belongs to Phase 11.

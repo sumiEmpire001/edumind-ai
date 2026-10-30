@@ -23,8 +23,12 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [fields, setFields] = useState<Record<string, string>>({});
+  const returnTo = routeState?.returnTo || "";
   const destination =
-    routeState?.returnTo === "/app/account" ? "/app/account" : "/app";
+    ["/app/account", "/app/chat"].includes(returnTo) ||
+    /^\/app\/chat\/[0-9a-f-]{36}$/i.test(returnTo)
+      ? returnTo
+      : "/app";
   if (auth.status === "authenticated")
     return <Navigate to={destination} replace />;
   async function submit(event: FormEvent) {

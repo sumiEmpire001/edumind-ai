@@ -1,46 +1,11 @@
-import { test, expect, type Page } from "@playwright/test";
-import { randomUUID } from "node:crypto";
-
-const api = "http://127.0.0.1:8000/api/v1";
-const origin = "http://127.0.0.1:4173";
-const password = process.env.E2E_TEST_PASSWORD;
-if (!password)
-  throw new Error(
-    "E2E_TEST_PASSWORD is required for the disposable test environment.",
-  );
-const pass = password;
-const newEmail = () => `learner-${randomUUID()}@example.com`;
+import { test, expect } from "@playwright/test";
+import { newEmail, pass, create, login, menu, signout } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   page.on("pageerror", (error) => {
     throw new Error(`Browser JavaScript failed: ${error.name}`);
   });
 });
-async function create(page: Page) {
-  const email = newEmail();
-  const response = await page.request.post(`${api}/auth/register`, {
-    headers: { Origin: origin },
-    data: { full_name: "Test Learner", email, password: pass },
-  });
-  expect(response.status()).toBe(201);
-  return email;
-}
-async function login(page: Page, email: string, value = pass) {
-  await page.goto("/login");
-  await page.getByLabel("Email address", { exact: true }).fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(value);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-}
-async function menu(page: Page) {
-  const toggle = page.getByRole("button", { name: /^Menu/ });
-  if (await toggle.isVisible()) await toggle.click();
-}
-async function signout(page: Page) {
-  await menu(page);
-  await page.getByRole("button", { name: "Sign out on all devices" }).click();
-  await expect(page).toHaveURL("/login");
-}
-
 test("registers, signs in, restores cookies, coordinates tabs and revokes logout", async ({
   page,
   context,
