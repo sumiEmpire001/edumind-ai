@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useLayoutEffect } from "react";
 import { Link, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
 import { SessionClient } from "./auth/session";
@@ -30,7 +30,9 @@ function ChatRoute() {
 
 function RouteEffects() {
   const { pathname, hash } = useLocation();
-  useEffect(() => {
+  // Move route focus before paint so a delayed effect cannot steal focus from
+  // the first field while a learner starts typing (including mobile WebKit).
+  useLayoutEffect(() => {
     const titles: Record<string, string> = {
       "/": "A clearer way to learn",
       "/login": "Sign in",
