@@ -3,6 +3,7 @@
 import io
 import warnings
 from pathlib import PurePosixPath
+from threading import BoundedSemaphore
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -14,6 +15,7 @@ from app.models.studio import ChatAttachment
 
 MAX_BYTES = 1024 * 1024
 MAX_PIXELS = 4_000_000
+image_slots = BoundedSemaphore(2)
 
 
 def validate(filename: str, data: bytes, mime: str) -> tuple[bytes, str]:
@@ -34,6 +36,8 @@ def validate(filename: str, data: bytes, mime: str) -> tuple[bytes, str]:
         (".jpeg", "image/jpeg"),
     }:
         raise HTTPException(422, "Attach PNG, JPEG or UTF-8 TXT files.")
+    if not image_slots.acquire(blocking=False):
+        raise HTTPException(503, "Image processing is busy. Please try again.")
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
@@ -52,6 +56,8 @@ def validate(filename: str, data: bytes, mime: str) -> tuple[bytes, str]:
         return normalized, "image/jpeg"
     except Exception:
         raise HTTPException(422, "Use a valid image up to 4 million pixels and 1 MB.") from None
+    finally:
+        image_slots.release()
 
 
 def view(row):

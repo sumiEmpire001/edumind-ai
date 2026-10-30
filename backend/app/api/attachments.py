@@ -139,6 +139,8 @@ def preview(cid: UUID, aid: UUID, request: Request, db: DB, identity: Current):
     )
     if row is None or row.mime not in {"image/jpeg", "image/png"}:
         raise HTTPException(404, "Image not found.")
+    if not attachments.image_slots.acquire(blocking=False):
+        raise HTTPException(503, "Image processing is busy. Please try again.")
     try:
         data = storage(request).get(row.object_key)
         if len(data) > attachments.MAX_BYTES:
@@ -151,6 +153,8 @@ def preview(cid: UUID, aid: UUID, request: Request, db: DB, identity: Current):
             image.convert("RGB").save(output, format="JPEG", quality=80)
     except Exception:
         raise HTTPException(503, "Image preview is unavailable.") from None
+    finally:
+        attachments.image_slots.release()
     return {"mime": "image/jpeg", "base64": base64.b64encode(output.getvalue()).decode()}
 
 

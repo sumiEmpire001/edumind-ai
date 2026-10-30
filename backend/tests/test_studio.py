@@ -310,6 +310,32 @@ def test_attachment_pending_limit_and_pixel_guard(studio):
     )
 
 
+def test_image_resource_limit_returns_retryable_failure(studio):
+    from unittest.mock import patch
+
+    from app.services.attachments import image_slots
+
+    client, _, headers, _ = studio
+    client.app.state.object_store = MemoryStore()
+    cid = conversation(studio)
+    source = io.BytesIO()
+    Image.new("RGB", (16, 16), "green").save(source, format="PNG")
+    path = f"/api/v1/conversations/{cid}/attachments?filename=fixture.png"
+    with patch.object(image_slots, "acquire", return_value=False):
+        assert (
+            client.post(
+                path, headers={**headers, "Content-Type": "image/png"}, content=source.getvalue()
+            ).status_code
+            == 503
+        )
+    assert (
+        client.post(
+            path, headers={**headers, "Content-Type": "image/png"}, content=source.getvalue()
+        ).status_code
+        == 201
+    )
+
+
 @pytest.mark.integration
 def test_document_removal_during_generation_does_not_save_answer(studio):
     import asyncio
