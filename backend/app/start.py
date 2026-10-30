@@ -44,6 +44,11 @@ def main():
                 if m.supported_actions and "generateContent" in m.supported_actions
             ]
             logging.warning("gemini_available_models=%s", models[:35])
+            response = client.models.generate_content(
+                model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+                contents="What is 2 + 2? Reply briefly.",
+            )
+            logging.warning("gemini_generation_check nonempty=%s", bool(response.text))
         except errors.APIError as exc:
             message = (exc.message or "").replace(key, "[REDACTED]") if key else "missing key"
             message = re.sub(r"AIza[\w-]+", "[REDACTED]", message)
