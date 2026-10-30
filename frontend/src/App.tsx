@@ -37,6 +37,7 @@ function RouteEffects() {
       "/register": "Create an account",
       "/app": "Your workspace",
       "/app/account": "My account",
+      "/app/knowledge": "Knowledge library",
     };
     document.title = `${titles[pathname] || (pathname.startsWith("/app/chat") ? "Study chat" : "Page not found")} · EduMind AI`;
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView?.();

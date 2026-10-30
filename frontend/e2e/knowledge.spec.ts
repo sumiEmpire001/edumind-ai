@@ -7,19 +7,18 @@ test("contributor upload, administrator preview/review, processing and removal",
 }) => {
   const title = `Mechanics ${randomUUID()}`;
   await login(page, "contributor-e2e@example.com");
+  await expect(page).toHaveURL(/\/app$/);
   await page.goto("/app/knowledge");
   await expect(
     page.getByRole("button", { name: "Submit for review" }),
   ).toBeEnabled();
   await page.getByLabel("Title", { exact: true }).fill(title);
   await page.getByLabel("Discipline", { exact: true }).fill("Physics");
-  await page
-    .getByLabel("Document", { exact: true })
-    .setInputFiles({
-      name: "mechanics.txt",
-      mimeType: "text/plain",
-      buffer: Buffer.from(`Force equals mass times acceleration. ${title}`),
-    });
+  await page.getByLabel("Document", { exact: true }).setInputFiles({
+    name: "mechanics.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from(`Force equals mass times acceleration. ${title}`),
+  });
   await page.getByRole("button", { name: "Submit for review" }).click();
   await expect(
     page.getByText(/Submitted for administrator review/),
@@ -33,6 +32,7 @@ test("contributor upload, administrator preview/review, processing and removal",
   ).toHaveCount(0);
   await signout(page);
   await login(page, "admin-e2e@example.com");
+  await expect(page).toHaveURL(/\/app$/);
   await page.goto("/app/knowledge");
   submission = page
     .getByRole("article")

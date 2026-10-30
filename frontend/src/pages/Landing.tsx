@@ -28,7 +28,7 @@ export function Landing() {
               </Link>
             </div>
             <p className="early-note">
-              Accounts are open. AI learning tools are coming soon.
+              Ask questions. Build understanding. Keep your conversations.
             </p>
           </div>
           <div className="study-visual" aria-label="Our learning philosophy">
