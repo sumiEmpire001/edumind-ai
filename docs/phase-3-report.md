@@ -1,6 +1,6 @@
 # Phase 3 development report
 
-Date: 30 October 2026. Status: implementation complete; browser CI gate pending.
+Date: 30 October 2026. Status: implemented and verified; PR #2 prepared for review.
 
 ## Scope and affected files
 
@@ -18,18 +18,49 @@ Date: 30 October 2026. Status: implementation complete; browser CI gate pending.
 No backend production schema, provider, knowledge, upload or administration feature was
 changed. No AI functionality is simulated. No production service or account was created.
 
-## Verification so far
+## Executed verification
 
-Local frontend: 29 tests passed, including full-response timeout and lock-failure
-regressions. TypeScript, lint, production build and dependency audit passed (zero known
-frontend vulnerabilities). Backend regression tests passed locally: 59 passed, four
-PostgreSQL-only checks skipped. The existing backend suite will run fully on PostgreSQL
-in CI, alongside the new desktop/mobile browser job.
+| Check | Result |
+|---|---|
+| Frontend local unit/component suite | 29 passed |
+| Frontend CI suite | 29 passed |
+| Backend local regression suite | 59 passed, four PostgreSQL-only checks explicitly skipped |
+| Backend CI on PostgreSQL/pgvector | 63 passed, no skips |
+| Browser end-to-end suite | 14 passed: seven cases each on desktop Chromium and mobile WebKit |
+| Lint, TypeScript and production build | Passed |
+| Dependency audits | No known vulnerabilities found |
+| CI workflow YAML | Parsed; backend/frontend/browser jobs executed successfully |
+| Manual managed-browser inspection | Landing layout and registration navigation/form layout verified |
 
-Manual managed-browser inspection verified landing layout and registration navigation.
-It did not authenticate against a local database: PostgreSQL is unavailable here.
-The real browser-to-API-to-PostgreSQL workflow is therefore a mandatory CI gate.
-No browser test is claimed passed before its workflow runs.
+Successful implementation workflow:
+https://github.com/sumiEmpire001/edumind-ai/actions/runs/41067222005
+Tested implementation commit: 955aff9a74eb9d0a9426db5b325b1e2f8793a351.
+Pull request: https://github.com/sumiEmpire001/edumind-ai/pull/2
+
+The browser tests use the real FastAPI backend and PostgreSQL; synthetic contributor/admin
+fixtures are restricted to a disposable database with a name ending in _test. No production
+user data is used. The suite verified registration, incorrect/correct credentials, cookie
+recovery after reload, concurrent tabs, backend-confirmed all-device sign-out and revocation,
+password changes, server-confirmed roles, responsive navigation and no horizontal overflow.
+A test-only injected 503 verified that logout failure remains visible and does not claim
+success. Unit tests separately cover StrictMode coalescing, late-response guards, safe
+errors, credential storage avoidance, full response-body timeout and lock acquisition failure.
+
+## Full-story verification
+
+| Boundary | Evidence |
+|---|---|
+| UI renders and navigates | Manual landing/registration inspection and browser form/navigation assertions |
+| Client -> API | Real register/login/password/logout requests passed in both browser engines |
+| API -> data | PostgreSQL user persistence, password update and session revocation assertions passed |
+| Data -> response | Backend suite passed all 63 tests against real PostgreSQL |
+| Response -> UI | Identity/role display, confirmations, reload recovery and failure-state assertions passed |
+
+The final follow-up improves mobile input readability (16 px to avoid iOS focus zoom),
+wraps long greeting names and records this evidence. CI runs again on that follow-up.
+No deployment occurred. Local manual inspection did not authenticate against a local
+PostgreSQL instance; that boundary was verified in CI instead. The existing Starlette
+HTTPX test-adapter deprecation warning remains non-failing.
 
 ## Branch and phase boundary
 
