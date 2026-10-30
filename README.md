@@ -3,11 +3,11 @@
 **Teach students, not just answer questions.**
 
 AI academic support platform, built in verified phases. This repository currently
-contains the **Phase 1 foundation and Phase 2 backend authentication**: React/Vite shell,
+contains the **Phases 1–3 foundation, authentication and frontend**: React/Vite shell,
 FastAPI, PostgreSQL/pgvector migrations, student registration, login, rotating sessions,
 backend role permissions, user management, tests, CI and documentation.
-It is not a production-ready learning platform yet. Frontend login forms, AI calls,
-uploads, RAG indexing and the local watcher arrive in later phases.
+It is not a production-ready learning platform yet. Registration, login and account pages
+are implemented; AI calls, uploads, RAG indexing and the local watcher arrive in later phases.
 
 ## Requirements
 
@@ -81,8 +81,8 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:5173. `Check connection` calls the backend readiness API.
-The page remains a development shell; frontend authentication is Phase 3.
+Open http://localhost:5173. Start the backend and apply its migrations before signing in.
+The frontend includes the landing, registration/login, protected workspace and account pages.
 Only `VITE_API_BASE_URL` is public configuration; never put secrets in Vite variables.
 
 ## Verification
@@ -121,11 +121,13 @@ npm audit --audit-level=high
 - [Phase 1 development report](docs/phase-1-report.md)
 - [Authentication and admin operations](docs/authentication.md)
 - [Phase 2 development report](docs/phase-2-report.md)
+- [Frontend authentication and browser tests](docs/frontend-authentication.md)
+- [Phase 3 development report](docs/phase-3-report.md)
 
 ## Source control
 
 Repository: https://github.com/sumiEmpire001/edumind-ai
 
-Use feature branches and pull requests from Phase 2 onward. Require both CI jobs
+Phase 3 is stacked on the Phase 2 branch until PR #1 is merged. Use feature branches and pull requests. Require both CI jobs
 before merging when repository settings allow it. Do not commit `.env`, uploads,
 databases, tokens, or private academic materials. Cloud deployment belongs to Phase 11.

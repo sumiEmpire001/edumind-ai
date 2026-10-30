@@ -1,126 +1,67 @@
-import { useState } from "react";
-import { Link, Route, Routes } from "react-router-dom";
-import { getReadiness } from "./api/client";
+import { useEffect } from "react";
+import { Link, Route, Routes, useLocation } from "react-router-dom";
+import { AuthProvider } from "./auth/AuthContext";
+import { SessionClient } from "./auth/session";
+import { SessionGate } from "./components/SessionGate";
+import { WorkspaceLayout } from "./components/WorkspaceLayout";
+import { Landing } from "./pages/Landing";
+import { AuthPage } from "./pages/AuthPage";
+import { Overview } from "./pages/Overview";
+import { Account } from "./pages/Account";
 
-function Foundation() {
-  const [status, setStatus] = useState("Connection not checked");
-  const [checking, setChecking] = useState(false);
-  async function check() {
-    if (checking) return;
-    setChecking(true);
-    setStatus("Checking backend and database…");
-    try {
-      await getReadiness();
-      setStatus("Backend and database are ready");
-    } catch {
-      setStatus(
-        "Service unavailable. Check the backend, database, and migrations.",
-      );
-    } finally {
-      setChecking(false);
+function RouteEffects() {
+  const { pathname, hash } = useLocation();
+  useEffect(() => {
+    const titles: Record<string, string> = {
+      "/": "A clearer way to learn",
+      "/login": "Sign in",
+      "/register": "Create an account",
+      "/app": "Your workspace",
+      "/app/account": "My account",
+    };
+    document.title = `${titles[pathname] || "Page not found"} · EduMind AI`;
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView?.();
+    else {
+      window.scrollTo?.(0, 0);
+      document.getElementById("main-content")?.focus({ preventScroll: true });
     }
-  }
-  return (
-    <>
-      <header>
-        <Link className="brand" to="/">
-          <span className="mark">E</span> EduMind <span className="ai">AI</span>
-        </Link>
-        <span className="badge">Phase 01 · Foundation</span>
-      </header>
-      <main>
-        <section className="intro">
-          <p className="eyebrow">A clearer path to understanding</p>
-          <h1>
-            Learn the why.
-            <br />
-            <span>Build the understanding.</span>
-          </h1>
-          <p className="lead">
-            An academic companion built to help you work through ideas, connect
-            concepts, and learn with confidence.
-          </p>
-          <div className="principle">
-            <span aria-hidden="true">↗</span>
-            <p>
-              Our philosophy
-              <strong>Teach students, not just answer questions.</strong>
-            </p>
-          </div>
-        </section>
-        <section className="foundation" aria-labelledby="foundation-title">
-          <p className="eyebrow">Development workspace</p>
-          <h2 id="foundation-title">
-            Good learning starts
-            <br />
-            with a strong foundation.
-          </h2>
-          <p>
-            This initial milestone establishes the frontend, API, and database
-            setup. Student accounts, AI conversations, and document review will
-            arrive in later phases.
-          </p>
-          <div className="status">
-            <span className="status-label">System connection</span>
-            <p role="status" aria-live="polite">
-              {status}
-            </p>
-            <button onClick={check} disabled={checking}>
-              {checking ? "Checking…" : "Check connection"}
-              <span aria-hidden="true"> ↗</span>
-            </button>
-          </div>
-          <p className="note">
-            This is a development foundation. Academic AI features are not
-            available yet.
-          </p>
-        </section>
-        <section className="pillars" aria-label="Platform principles">
-          {[
-            [
-              "01",
-              "Understand deeply",
-              "Clear explanations, worked steps, and meaningful follow-up.",
-            ],
-            [
-              "02",
-              "Learn from sources",
-              "Academic materials reviewed before they enter the knowledge base.",
-            ],
-            [
-              "03",
-              "Built with care",
-              "Role permissions, private documents, and verified development.",
-            ],
-          ].map(([n, t, d]) => (
-            <article key={n}>
-              <span>{n}</span>
-              <h2>{t}</h2>
-              <p>{d}</p>
-            </article>
-          ))}
-        </section>
-      </main>
-      <footer>
-        <span>EduMind AI</span>
-        <span>Thoughtful learning. From the ground up.</span>
-      </footer>
-    </>
-  );
+  }, [pathname, hash]);
+  return null;
 }
-export default function App() {
+export default function App({ client }: { client?: SessionClient }) {
   return (
-    <Routes>
-      <Route path="/" element={<Foundation />} />
-      <Route
-        path="*"
-        element={
-          <main>
-            <h1>Page not found</h1>
-            <Link to="/">Return to EduMind AI</Link>
-          </main>
-        }
-      />
-    </Routes>
+    <AuthProvider client={client}>
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
+      <RouteEffects />
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route
+          path="/register"
+          element={<AuthPage key="register" mode="register" />}
+        />
+        <Route path="/login" element={<AuthPage key="login" mode="login" />} />
+        <Route element={<SessionGate />}>
+          <Route path="/app" element={<WorkspaceLayout />}>
+            <Route index element={<Overview />} />
+            <Route path="account" element={<Account />} />
+          </Route>
+        </Route>
+        <Route
+          path="*"
+          element={
+            <main id="main-content" tabIndex={-1} className="state-page">
+              <p className="eyebrow">A different path</p>
+              <h1>Page not found.</h1>
+              <p>Let’s get you back to a familiar place.</p>
+              <Link className="button" to="/">
+                Back to EduMind
+              </Link>
+            </main>
+          }
+        />
+      </Routes>
+    </AuthProvider>
   );
 }
