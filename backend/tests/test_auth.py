@@ -34,7 +34,7 @@ def engine():
         with base.begin() as c:
             c.execute(text("CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public"))
             c.execute(text(f'CREATE SCHEMA "{schema}"'))
-        isolated = make_url(url).update_query_dict({"options": f"-csearch_path={schema}"})
+        isolated = make_url(url).update_query_dict({"options": f"-csearch_path={schema},public"})
         env = {
             **os.environ,
             "DATABASE_URL": isolated.render_as_string(hide_password=False),

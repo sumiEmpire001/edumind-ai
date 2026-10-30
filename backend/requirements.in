@@ -9,3 +9,7 @@ pwdlib[argon2]
 PyJWT
 email-validator
 google-genai==2.34.0
+boto3
+pypdf
+defusedxml
+vercel
