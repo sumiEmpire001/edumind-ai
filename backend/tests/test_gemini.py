@@ -52,7 +52,7 @@ def test_flash_reasoning_is_bounded_without_relaxing_answer_limit():
     asyncio.run(p.generate([Turn("user", "Draft a substantive report section.")]))
     config = p.client.aio.models.generate_content.call_args.kwargs["config"]
     assert config.thinking_config.thinking_budget == 128
-    assert config.max_output_tokens == 2400
+    assert config.max_output_tokens == 4096
 
 
 @pytest.mark.parametrize(
