@@ -77,6 +77,7 @@ function SectionEditor({
       <label>
         Section heading
         <input
+          aria-label="Section heading"
           value={title}
           maxLength={100}
           disabled={busy}
@@ -96,6 +97,7 @@ function SectionEditor({
         <label>
           Section text
           <textarea
+            aria-label="Section text"
             rows={20}
             value={content}
             maxLength={30000}
@@ -442,6 +444,7 @@ export default function Studio() {
               <label>
                 Document title
                 <input
+                  aria-label="Document title"
                   required
                   maxLength={160}
                   value={title}
@@ -451,6 +454,7 @@ export default function Studio() {
               <label>
                 What should this report cover?
                 <textarea
+                  aria-label="What should this report cover?"
                   required
                   minLength={10}
                   maxLength={1200}
@@ -482,6 +486,7 @@ export default function Studio() {
               <label>
                 Outline · one section heading per line
                 <textarea
+                  aria-label="Outline · one section heading per line"
                   rows={12}
                   value={headings}
                   maxLength={1818}

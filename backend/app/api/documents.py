@@ -375,7 +375,7 @@ def export_document(did: UUID, request: Request, db: DB, identity: Current):
 def export_conversation(
     cid: UUID, data: ConversationExport, request: Request, db: DB, identity: Current
 ):
-    row = chat.owned(db, identity.user.id, cid)
+    row = chat.regular_owned(db, identity.user.id, cid)
     query = select(Message).where(Message.conversation_id == cid)
     if data.message_id:
         query = query.where(Message.id == data.message_id)

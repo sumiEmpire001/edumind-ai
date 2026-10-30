@@ -54,7 +54,7 @@ def persist(engine, owner, sid, cid, filename, data, mime, store):
         chat.live_identity(db, owner, sid)
         # Per-owner quota updates serialize without blocking the ASGI event loop.
         db.scalar(select(User).where(User.id == owner).with_for_update())
-        chat.owned(db, owner, cid, lock=True)
+        chat.regular_owned(db, owner, cid, lock=True)
         unbound = db.scalar(
             select(func.count())
             .select_from(ChatAttachment)
@@ -109,7 +109,7 @@ def persist(engine, owner, sid, cid, filename, data, mime, store):
 
 @router.get("/conversations/{cid}/attachments")
 def pending(cid: UUID, db: DB, identity: Current):
-    chat.owned(db, identity.user.id, cid)
+    chat.regular_owned(db, identity.user.id, cid)
     return [
         attachments.view(row)
         for row in db.scalars(
@@ -128,7 +128,7 @@ def pending(cid: UUID, db: DB, identity: Current):
 
 @router.get("/conversations/{cid}/attachments/{aid}/preview")
 def preview(cid: UUID, aid: UUID, request: Request, db: DB, identity: Current):
-    chat.owned(db, identity.user.id, cid)
+    chat.regular_owned(db, identity.user.id, cid)
     row = db.scalar(
         select(ChatAttachment).where(
             ChatAttachment.id == aid,
@@ -158,7 +158,7 @@ def preview(cid: UUID, aid: UUID, request: Request, db: DB, identity: Current):
 def discard(cid: UUID, aid: UUID, request: Request, db: DB, identity: Current):
     from fastapi import HTTPException
 
-    chat.owned(db, identity.user.id, cid, lock=True)
+    chat.regular_owned(db, identity.user.id, cid, lock=True)
     row = db.scalar(
         select(ChatAttachment)
         .where(

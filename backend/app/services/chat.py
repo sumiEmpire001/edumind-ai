@@ -23,7 +23,7 @@ from app.models.knowledge import (
     KnowledgeSubmission,
     MessageSource,
 )
-from app.models.studio import ChatAttachment
+from app.models.studio import ChatAttachment, StudioDocument
 from app.schemas.chat import (
     ConversationDetail,
     ConversationView,
@@ -60,7 +60,13 @@ def owned(db: Session, owner: UUID, cid: UUID, lock=False, include_deleted=False
 def create(db: Session, owner: UUID, client_id: UUID, trace: str) -> Conversation:
     existing = db.get(Conversation, client_id)
     if existing:
-        if existing.owner_id != owner or existing.deleted_at:
+        if (
+            existing.owner_id != owner
+            or existing.deleted_at
+            or db.scalar(
+                select(StudioDocument.id).where(StudioDocument.conversation_id == client_id)
+            )
+        ):
             raise HTTPException(409, "This conversation identifier cannot be used.")
         return existing
     row = Conversation(
@@ -86,7 +92,13 @@ def create(db: Session, owner: UUID, client_id: UUID, trace: str) -> Conversatio
 
 
 def listing(db: Session, owner: UUID, offset: int, limit: int):
-    conditions = (Conversation.owner_id == owner, Conversation.deleted_at.is_(None))
+    conditions = (
+        Conversation.owner_id == owner,
+        Conversation.deleted_at.is_(None),
+        ~select(StudioDocument.id)
+        .where(StudioDocument.conversation_id == Conversation.id)
+        .exists(),
+    )
     total = db.scalar(select(func.count()).select_from(Conversation).where(*conditions))
     items = list(
         db.scalars(
@@ -98,6 +110,13 @@ def listing(db: Session, owner: UUID, offset: int, limit: int):
         )
     )
     return {"items": items, "total": total, "offset": offset, "limit": limit}
+
+
+def regular_owned(db, owner, cid, lock=False):
+    row = owned(db, owner, cid, lock=lock)
+    if db.scalar(select(StudioDocument.id).where(StudioDocument.conversation_id == cid)):
+        raise HTTPException(404, "Conversation not found.")
+    return row
 
 
 def detail(

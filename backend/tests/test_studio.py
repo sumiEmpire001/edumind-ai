@@ -55,8 +55,13 @@ def generation(client, headers, doc, index=0, rid=None, mode="replace"):
 
 
 def test_draft_revision_owner_isolation_and_manual_pdf(studio):
-    client, _, headers, _ = studio
+    client, engine, headers, _ = studio
     doc = create(studio)
+    assert client.get("/api/v1/conversations", headers=headers).json()["total"] == 0
+    with Session(engine) as db:
+        hidden = db.get(StudioDocument, UUID(doc["id"])).conversation_id
+    assert client.get(f"/api/v1/conversations/{hidden}", headers=headers).status_code == 404
+    assert client.delete(f"/api/v1/conversations/{hidden}", headers=headers).status_code == 404
     path = f"/api/v1/documents/{doc['id']}"
     assert client.get("/api/v1/documents", headers=headers).json()[0]["id"] == doc["id"]
     edited = client.patch(

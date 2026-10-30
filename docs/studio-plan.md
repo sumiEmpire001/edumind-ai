@@ -22,6 +22,8 @@ need review. Never invent a bibliography, institutional facts or experimental re
 - Owner-checked durable drafts, optimistic revisions and generation recovery using the
   existing idempotent chat engine. Section generation has bounded provider calls; no new
   paid worker is required for text drafting or PDF exports.
+- Document generation history is isolated from regular chat listings and chat controls.
+  Removing a study conversation cannot accidentally remove a report's backing history.
 - Private, owner/conversation-scoped attachments with bounded byte and pixel limits,
   allowlisted file types, ownership checks on every use, and image-understanding parts
   passed directly to Gemini. No browser key, public file URL, or global knowledge indexing.
