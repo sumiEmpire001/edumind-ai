@@ -209,7 +209,14 @@ def test_backup_restore_rehearsal(knowledge, tmp_path):
         with restored.begin() as connection:
             connection.execute(text("CREATE EXTENSION vector WITH SCHEMA public"))
         command(
-            ["pg_restore", "--no-owner", "--no-privileges", "--exit-on-error", str(archive)],
+            [
+                "pg_restore",
+                "--dbname=" + restore_name,
+                "--no-owner",
+                "--no-privileges",
+                "--exit-on-error",
+                str(archive),
+            ],
             {**environment, "PGDATABASE": restore_name},
         )
         with k.engine.connect() as before, restored.connect() as after:

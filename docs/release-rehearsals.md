@@ -41,6 +41,23 @@ CI enables the backup opt-in only in its ephemeral PostgreSQL backend job. The t
 authentication fixture creates its own random schema. Without PostgreSQL, three of these
 checks explicitly skip; a skipped check is not evidence of success.
 
+## Same-origin session recovery regression
+
+The deployed browser revealed that a same-origin `GET /auth/csrf` can lack `Origin`.
+The old origin-only guard returned 403 and left signed-out visitors at "Let's reconnect"
+instead of the sign-in page. HTTP smoke tests manually supplied Origin, and the browser
+suite used a cross-origin API URL, so neither represented the deployed proxy behavior.
+
+The guard now accepts an exact allowlisted Referer origin only for the read-only CSRF GET
+when Origin is absent. Explicit untrusted Origin is still rejected, and writes continue
+requiring trusted Origin plus the existing CSRF checks. Regression cases reject missing,
+malformed, credential-bearing and lookalike Referers. Browser CI now uses the same-origin
+Vite API proxy so cookie recovery/reload tests exercise this deployment topology.
+
+First PostgreSQL CI run 41134204510 passed concurrency/ranking checks; the restore command
+needed an explicit --dbname option. That test-command correction and the session fix are
+awaiting the new full run. No failed or skipped restore is counted as successful evidence.
+
 ## Evidence and remaining boundaries
 
 Local prompt-boundary test passed. Local PostgreSQL startup is restricted in this

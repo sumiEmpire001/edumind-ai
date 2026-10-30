@@ -1,6 +1,7 @@
 import secrets
 from dataclasses import dataclass
 from typing import Annotated
+from urllib.parse import urlsplit
 
 import jwt
 from fastapi import Depends, HTTPException, Request
@@ -65,7 +66,22 @@ Admin = Annotated[Identity, Depends(administrator)]
 
 
 def trusted_origin(request: Request) -> None:
-    if request.headers.get("origin") not in request.app.state.settings.cors_origins:
+    origin = request.headers.get("origin")
+    # Browsers can omit Origin on same-origin GETs through the frontend's API proxy.
+    # Only the read-only CSRF handshake may fall back to an exact trusted Referer.
+    # Explicit Origin always takes precedence; writes still require Origin and CSRF.
+    if origin is None and request.method == "GET" and request.url.path == "/api/v1/auth/csrf":
+        try:
+            reference = urlsplit(request.headers.get("referer", ""))
+            if (
+                reference.scheme in {"http", "https"}
+                and not reference.username
+                and not reference.password
+            ):
+                origin = f"{reference.scheme}://{reference.netloc}"
+        except ValueError:
+            pass
+    if origin not in request.app.state.settings.cors_origins:
         raise HTTPException(403, "Request origin is not permitted.")
 
 
