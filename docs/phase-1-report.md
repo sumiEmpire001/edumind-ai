@@ -1,7 +1,7 @@
 # Phase 1 development report
 
 Date: 30 October 2026. Project: EduMind AI.
-Status: Foundation implemented; verification gate remains open.
+Status: Phase 1 foundation published; automated verification gate passed.
 
 ## Architecture established
 
@@ -37,7 +37,8 @@ watcher are not implemented. No simulated login/upload controls were added.
 
 | Check | Result |
 |---|---|
-| Backend pytest | 15 passed; 1 PostgreSQL integration test skipped |
+| Backend pytest locally | 15 passed; 1 PostgreSQL integration test skipped |
+| Backend pytest on GitHub Actions | 16 passed, no skips; includes real PostgreSQL migration and vector SQL |
 | Ruff lint and format check | Passed |
 | Alembic upgrade head --sql | Passed; generated SQL, not executed against a server |
 | Backend runtime dependency audit | No known vulnerabilities found |
@@ -45,7 +46,8 @@ watcher are not implemented. No simulated login/upload controls were added.
 | Vitest | 5 passed |
 | Vite production build | Passed |
 | npm audit after test-runner upgrade | 0 vulnerabilities |
-| Compose and CI YAML parsing | Passed; does not verify Docker or GitHub Actions execution |
+| Compose and CI YAML parsing | Passed |
+| GitHub Actions | Backend and frontend jobs passed; PostgreSQL service container ran successfully |
 | React review | Semantic regions, real button state, live status, keyboard focus and small-screen CSS |
 
 The initial frontend audit found vulnerable test dependencies. Vitest was upgraded to
@@ -53,26 +55,35 @@ The initial frontend audit found vulnerable test dependencies. Vitest was upgrad
 adapter is deprecated in favor of HTTPX2. Tests pass; adapter migration remains a
 maintenance item. No Gemini or production credentials were used.
 
-## Open verification and delivery gates
+## GitHub verification evidence
 
-1. **Live PostgreSQL/pgvector:** Docker and PostgreSQL are unavailable in this execution
-   environment. An attempted system package update did not provision a server.
-   The integration test deliberately skips without TEST_DATABASE_URL. SQL generation
-   and mocked health tests do not establish live database correctness.
-2. **GitHub and CI:** repository supplied by the owner:
-   https://github.com/sumiEmpire001/edumind-ai (public). Write access was restored
-   after the initial HTTP 403. Phase 1 source publication is underway. CI results
-   remain pending until the complete foundation workflow finishes.
-   Branch protection is not configured.
-3. **Container and browser checks:** Docker/Compose have not run. No browser visual,
-   real-device mobile or browser-to-API E2E testing was performed. Frontend checks here
-   are DOM tests and a production build.
-4. **Production:** deployment is deferred to Phase 11. No Vercel, backend, managed DB,
-   storage or Gemini resource was provisioned or charged.
+- Repository: https://github.com/sumiEmpire001/edumind-ai
+- Tested source commit: 51ec67f04784c6fca8b25c23d4cf6fe96481e303
+- Successful workflow: https://github.com/sumiEmpire001/edumind-ai/actions/runs/41059636465
+- Backend job: 16 tests passed, including the integration test against PostgreSQL 16
+  with pgvector. The test applies the Alembic baseline twice, checks database readiness,
+  and executes a real vector similarity query. Ruff and dependency audit passed.
+- Frontend job: clean npm install, lint, TypeScript, tests, build and dependency audit
+  all passed. Five frontend tests passed locally and in CI.
+- The initial GitHub HTTP 403 was resolved by restoring app write access. All 49 source
+  files were uploaded and the remote tree matched the local source tree exactly.
 
-## Next gate
+## Remaining verification limits and operational work
 
-Finish Phase 1 before authentication: start PostgreSQL, apply migrations, verify API
-readiness and the frontend connection check, and run integration tests on a separate
-disposable database. Confirm both GitHub CI jobs pass. Record those
-results before Phase 2. Do not treat this foundation as a production-ready platform.
+1. Local PostgreSQL/Docker remains unavailable in this execution environment; live
+   database verification was completed instead on an isolated GitHub Actions service.
+2. The API Docker image and root Compose configuration have not been executed end to
+   end. CI ran the PostgreSQL service container and tested Python directly.
+3. Browser visual checks, real-device mobile checks and browser-to-API E2E workflows
+   have not been performed. These remain part of the later frontend and QA phases.
+4. Branch protection is not configured. Use protected branches and required checks as
+   the project workflow develops.
+5. No frontend, backend, production database, object storage or Gemini resource has
+   been deployed. Production deployment remains Phase 11.
+
+## Next milestone
+
+Phase 1 automated checks and GitHub publication are complete. Phase 2 is planned next:
+secure authentication, sessions, user management, role enforcement, rate limits and
+backend resilience. It has not started in this delivery. This foundation is not a
+production-ready academic platform.
