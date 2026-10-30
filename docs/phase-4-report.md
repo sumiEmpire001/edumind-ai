@@ -1,6 +1,6 @@
 # Phase 4 development report
 
-Date: 30 October 2026. Status: implementation complete; PostgreSQL/browser CI pending.
+Date: 30 October 2026. Status: verified; ready for review.
 
 ## Delivered
 
@@ -26,15 +26,24 @@ workspace navigation/overview, lazy route boundary, styles and unit/browser test
 Documentation: docs/conversations.md and this report. Existing auth browser helpers
 are shared rather than reimplemented.
 
-## Evidence so far
+## Verification evidence
 
-The full backend regression suite passed locally: 85 passed, six PostgreSQL checks skipped
-(including the two new chat concurrency checks). The new chat subset passed 26 tests.
-42 frontend tests passed locally, including safe math/Markdown, copy errors, draft/request
-recovery and unavailable states. Lint/TypeScript/build passed. A transitive math renderer
-advisory was resolved by pinning all instances to the patched direct version; npm audit
-then reported zero vulnerabilities. Full backend regression and browser verification
-will run on CI before this phase is marked verified.
+[GitHub Actions run 41075856563](https://github.com/sumiEmpire001/edumind-ai/actions/runs/41075856563)
+passed backend, frontend and browser jobs on commit aa82113b02a9679972a790ed986bce221140c79b:
+
+- 91 backend tests passed against PostgreSQL/pgvector, including migration preservation
+  and concurrent request/removal checks. Locally, 85 passed and six PostgreSQL checks
+  were explicitly skipped because PostgreSQL was unavailable.
+- 42 frontend unit/component tests passed. Lint, TypeScript and production build passed.
+- 22 browser tests passed across desktop Chromium and mobile WebKit against real
+  FastAPI/PostgreSQL persistence and the explicitly labelled scripted provider.
+- Backend dependency audit and frontend audit passed; npm reported zero vulnerabilities.
+  A vulnerable nested math renderer was resolved by overriding it to the patched direct
+  version and rerunning installation, rendering tests and audit.
+
+The first browser run exposed an ambiguous test selector matching both the question
+article and textarea. Targeting the textbox explicitly fixed it; all browser cases
+then passed. No product failure was hidden by changing expected behavior.
 
 ## Phase boundary and limits
 

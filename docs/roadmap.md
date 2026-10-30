@@ -1,7 +1,7 @@
 # Roadmap and verification gates
 
 Work on one phase at a time. Stop at an unmet gate and record evidence; compilation
-alone never satisfies a functional gate. Phases 1–3 are verified. Phase 4 conversation implementation is under PostgreSQL/browser verification. Live Gemini integration remains Phase 5.
+alone never satisfies a functional gate. Phases 1–4 are verified. Phase 4 evidence is recorded in docs/phase-4-report.md. Live Gemini integration remains Phase 5.
 
 | Phase | Deliverable | Required gate before next phase |
 |---|---|---|
