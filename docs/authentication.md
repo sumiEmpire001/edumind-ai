@@ -168,3 +168,20 @@ an additional scoped design before public launch.
 - https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
 - https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html
 - https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
+
+## Phone-only initial administrator setup
+
+On a verified deployment with migrated tables, configure these temporary values in the
+Render backend environment (never in ChatGPT messages, GitHub or the frontend):
+
+- INITIAL_ADMIN_SETUP=true
+- INITIAL_ADMIN_EMAIL=a new dedicated administrator email, not an existing student account
+- INITIAL_ADMIN_NAME=your preferred administrator name
+- INITIAL_ADMIN_PASSWORD=a private 15–128 character password
+
+Deploy once. Startup serializes bootstrap under the same PostgreSQL advisory lock as the
+private CLI. It creates an administrator only if no administrator exists. Existing public
+accounts are not promoted, existing admin passwords are never overwritten, and no setup
+values are logged. After the generic `initial_administrator_created` event, remove/clear all
+four setup values and deploy again. Then sign in normally through the frontend. Leave this
+feature disabled otherwise. Additional administrators require the existing private CLI.

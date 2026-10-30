@@ -32,6 +32,9 @@ def main():
                     break
             logging.error("migration_failed category=%s", category)
             raise SystemExit(1) from None
+    from app.auth.initial_admin import initialize
+
+    initialize()
     if os.environ.get("CHECK_GEMINI_MODELS") == "true":
         from google import genai
         from google.genai import errors, types
