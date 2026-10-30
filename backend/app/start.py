@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 
 from alembic.config import Config
 from sqlalchemy.exc import SQLAlchemyError
@@ -30,6 +31,25 @@ def main():
                     break
             logging.error("migration_failed category=%s", category)
             raise SystemExit(1) from None
+    if os.environ.get("CHECK_GEMINI_MODELS") == "true":
+        from google import genai
+        from google.genai import errors, types
+
+        key = os.environ.get("GEMINI_API_KEY", "")
+        client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=10000))
+        try:
+            models = [
+                m.name
+                for m in client.models.list()
+                if m.supported_actions and "generateContent" in m.supported_actions
+            ]
+            logging.warning("gemini_available_models=%s", models[:35])
+        except errors.APIError as exc:
+            message = (exc.message or "").replace(key, "[REDACTED]") if key else "missing key"
+            message = re.sub(r"AIza[\w-]+", "[REDACTED]", message)
+            logging.warning("gemini_model_check status=%s detail=%s", exc.code, message[:400])
+        finally:
+            client.close()
     os.execvp(
         "uvicorn",
         [
