@@ -31,7 +31,7 @@ recommendations, additional AI providers and advanced analytics. Do not implemen
 | Phases 1–5 | Implemented, CI verified, hosted core flows verified | Full deployed browser coverage remains in QA |
 | Phases 6–8 | Implemented, automated workflow checks passed | Real private storage, worker, administrator and hosted document/RAG flows |
 | Phase 9 | Implemented, Linux/Windows CI verified | User's actual Windows folder and real scoped credential |
-| Phase 10 | Regression suites passed; release rehearsals added | New rehearsal CI, human real-model evaluation, hosted browser/load assessment |
+| Phase 10 | Regression suites and isolated restore/concurrency/retrieval rehearsals passed | Human real-model evaluation, full hosted browser/load assessment |
 | Phase 11 | Core frontend/API/database deployed | Hosted document activation, hosted backup restore, automatic Vercel source integration |
 | Phase 12 | Code fixes, audits and operations documentation present | Final sign-off after the remaining gates |
 

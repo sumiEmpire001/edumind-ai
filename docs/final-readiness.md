@@ -6,6 +6,19 @@ gate below has evidence.
 
 ## Completed evidence
 
+- Follow-up QA PR #7 is merged (4ab6333f465c2b89524b94df02d2993c12277174).
+  GitHub run 41134952520 passed all jobs: 144 PostgreSQL backend tests without skips,
+  45 frontend tests, 26 same-origin desktop/mobile browser tests, audits and 11 inbox
+  tests on each OS. Isolated database/object restore, 240-request concurrent-user
+  rehearsal and controlled vector retrieval passed. These do not replace hosted restore,
+  actual Gemini embedding evaluation or human academic review. See release-rehearsals.md.
+  The rehearsal also corrected Alembic test-schema isolation and found/fixed browser
+  same-origin CSRF recovery without relaxing write-request checks.
+- Render deploy dep-dbih8359fdbs73dlgdag is live on release
+  4ab6333f465c2b89524b94df02d2993c12277174. A fresh hosted browser check confirmed that
+  /app/account redirects a signed-out visitor to /login after the session fix.
+  The Vercel frontend build is unchanged; only the API required redeployment.
+
 - Combined application release 6e8385e656fba2ea1687083b857e667ace1322b5 is live.
   Render deploy dep-dbig3pui0phs739cm7mg is live; Vercel deployment
   dpl_AYquXKpa5GvqL7TobLbHfdsxB2VY is READY on the existing public frontend alias.

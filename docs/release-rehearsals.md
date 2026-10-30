@@ -54,11 +54,7 @@ requiring trusted Origin plus the existing CSRF checks. Regression cases reject 
 malformed, credential-bearing and lookalike Referers. Browser CI now uses the same-origin
 Vite API proxy so cookie recovery/reload tests exercise this deployment topology.
 
-First PostgreSQL CI run 41134204510 passed concurrency/ranking checks; the restore command
-needed an explicit --dbname option. That test-command correction and the session fix are
-awaiting the new full run. No failed or skipped restore is counted as successful evidence.
-
-The restore rehearsal then exposed a test-isolation flaw: Alembic could find an existing
+The restore rehearsal also exposed a test-isolation flaw: Alembic could find an existing
 public version table on search_path and skip creating the new test schema's tables.
 Tests now give migrations an explicit version-table schema and assert that users,
 knowledge_chunks and alembic_version actually exist there before running any fixture.
@@ -66,9 +62,22 @@ The CLI option is test-only; normal deployed migration behavior remains unchange
 
 ## Evidence and remaining boundaries
 
-Local prompt-boundary test passed. Local PostgreSQL startup is restricted in this
-execution environment, so database rehearsal results must come from CI and are pending
-until recorded below. Existing regression evidence is in final-readiness.md.
+GitHub run [41134952520](https://github.com/sumiEmpire001/edumind-ai/actions/runs/41134952520)
+passed all five jobs on commit 558c3603255799919803db499debb7eebdfc8d94:
+144 PostgreSQL backend tests with no skips, 45 frontend unit tests, 26 desktop Chromium/
+mobile WebKit browser tests, dependency audits, and 11 inbox tests on each of Linux and
+Windows. PR #7 is merged as 4ab6333f465c2b89524b94df02d2993c12277174.
+
+Render deploy dep-dbih8359fdbs73dlgdag is live on that merged release. Hosted browser
+verification confirmed a signed-out /app/account visit now reaches /login. The frontend
+build was not changed. No worker was purchased and hosted RAG remains disabled.
+
+The concurrency rehearsal completed 240 requests in 2.907 seconds, with a 0.321-second
+95th percentile for each three-request cycle. These are controlled CI/ASGI measurements
+with fixture answers, not hosted capacity or live-model performance claims. The restore
+rehearsal compared actual rows and verified vector retrieval after restore, then recovered
+the private fixture bytes from the checksummed snapshot. Local regression: 133 passed,
+11 PostgreSQL-only skips; Ruff formatting/lint and diff checks passed.
 
 Even after these rehearsals pass, the hosted gates remain: real private storage and worker,
 administrator bootstrap, hosted document/embedding/retrieval/removal checks, human answer
