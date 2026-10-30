@@ -18,4 +18,15 @@ def create_e2e_app():
         or not (make_url(database).database or "").endswith("_test")
     ):
         raise RuntimeError("The fixture server requires a named disposable test database")
-    return create_app(settings, provider=FixtureProvider())
+    app = create_app(settings, provider=FixtureProvider())
+    from app.auth.dependencies import Admin
+    from app.knowledge.worker import run_one
+    from tests.test_knowledge import FakeEmbeddings, MemoryStore
+
+    app.state.object_store = MemoryStore()
+
+    @app.post("/__test/process-knowledge")
+    def process(admin: Admin):
+        return {"processed": run_one(app.state.engine, app.state.object_store, FakeEmbeddings())}
+
+    return app

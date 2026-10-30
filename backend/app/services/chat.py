@@ -17,6 +17,12 @@ from app.auth.dependencies import unauthorized
 from app.core.config import Settings
 from app.models.chat import ChatRequest, Conversation, Message
 from app.models.identity import AuditLog, AuthSession, User
+from app.models.knowledge import (
+    KnowledgeChunk,
+    KnowledgeDocument,
+    KnowledgeSubmission,
+    MessageSource,
+)
 from app.schemas.chat import (
     ConversationDetail,
     ConversationView,
@@ -269,6 +275,7 @@ def complete(
     code: str | None,
     provider: str,
     trace: str,
+    sources: list | None = None,
 ) -> TurnResult:
     with Session(engine, expire_on_commit=False) as db:
         row = owned(db, owner, cid, lock=True, include_deleted=True)
@@ -291,6 +298,23 @@ def complete(
             return result(db, request, True)
         if utc(request.deadline_at) <= now():
             code = "interrupted"
+        sources = sources or []
+        for source in sorted(sources, key=lambda item: item["document_id"]):
+            eligible = db.scalar(
+                select(KnowledgeChunk.id)
+                .join(KnowledgeDocument)
+                .join(KnowledgeSubmission)
+                .where(
+                    KnowledgeChunk.id == UUID(source["chunk_id"]),
+                    KnowledgeDocument.active.is_(True),
+                    KnowledgeDocument.processing_status == "succeeded",
+                    KnowledgeSubmission.status == "approved",
+                    KnowledgeChunk.version == KnowledgeDocument.version,
+                )
+                .with_for_update(of=KnowledgeDocument)
+            )
+            if not eligible:
+                code = "unavailable"
         if code:
             fail(request, code)
             event(db, owner, "chat.answer_failed", request.id, trace)
@@ -307,6 +331,23 @@ def complete(
                     created_at=now(),
                 )
             )
+            db.flush()
+            message_id = db.scalar(
+                select(Message.id).where(
+                    Message.request_id == request.id, Message.role == "assistant"
+                )
+            )
+            for source in sources:
+                db.add(
+                    MessageSource(
+                        message_id=message_id,
+                        document_id=UUID(source["document_id"]),
+                        chunk_id=UUID(source["chunk_id"]),
+                        label=source["id"],
+                        title=source["title"],
+                        location=source["location"],
+                    )
+                )
             request.status, request.completed_at = "succeeded", now()
             event(db, owner, "chat.answer_saved", request.id, trace)
         row.updated_at = now()
@@ -329,7 +370,7 @@ async def submit(
     )
     if ticket.cached is not None:
         return ticket.cached
-    answer, code = None, None
+    answer, code, sources = None, None, []
     try:
         answer = await asyncio.wait_for(
             provider.generate(ticket.context), config.chat_timeout_seconds
@@ -338,6 +379,23 @@ async def submit(
             raise AcademicError("empty_response")
         if len(answer) > 12000:
             raise AcademicError("provider_failure")
+        sources = getattr(answer, "sources", [])
+        if sources:
+            import re
+
+            answer = re.sub(
+                r"\[S(\d+)\]",
+                lambda m: m.group() if int(m.group(1)) <= len(sources) else "",
+                answer,
+            )
+            answer = (
+                str(answer)
+                + "\n\nReference materials retrieved:\n"
+                + "\n".join(
+                    f"- [{source['id']}] {source['title']} — {source['location']}"
+                    for source in sources
+                )
+            )
         answer = answer.strip()
     except TimeoutError:
         code = "timeout"
@@ -349,5 +407,15 @@ async def submit(
             f"academic_provider_failed kind={type(exc).__name__}", extra={"request_id": trace}
         )
     return await run_in_threadpool(
-        complete, engine, owner, sid, cid, data.request_id, answer, code, provider.mode, trace
+        complete,
+        engine,
+        owner,
+        sid,
+        cid,
+        data.request_id,
+        answer,
+        code,
+        provider.mode,
+        trace,
+        sources,
     )

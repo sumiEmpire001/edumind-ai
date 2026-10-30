@@ -23,6 +23,15 @@ class Settings(BaseSettings):
     login_account_limit: int = Field(default=5, ge=1)
     register_ip_limit: int = Field(default=5, ge=1)
     auth_ip_limit: int = Field(default=60, ge=1)
+    blob_read_write_token: SecretStr | None = None
+    blob_store_id: str | None = None
+    storage_endpoint: str | None = None
+    storage_bucket: str | None = None
+    storage_access_key: SecretStr | None = None
+    storage_secret_key: SecretStr | None = None
+    storage_region: str = "eu-central-1"
+    embedding_model: str = "gemini-embedding-001"
+    rag_enabled: bool = False
     gemini_api_key: SecretStr | None = None
     gemini_model: str = Field(default="gemini-2.5-flash", pattern=r"^[a-zA-Z0-9.\-]+$")
     gemini_attempts: int = Field(default=3, ge=1, le=3)

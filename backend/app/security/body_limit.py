@@ -10,13 +10,14 @@ class BodyLimitMiddleware:
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http" or scope["method"] not in {"POST", "PUT", "PATCH"}:
             return await self.app(scope, receive, send)
+        limit = 3 * 1024 * 1024 if scope["path"] == "/api/v1/knowledge/submissions" else self.limit
         body = bytearray()
         while True:
             message = await receive()
             if message["type"] == "http.disconnect":
                 return
             body.extend(message.get("body", b""))
-            if len(body) > self.limit:
+            if len(body) > limit:
                 return await JSONResponse(
                     {"detail": "Request body is too large."}, status_code=413
                 )(scope, receive, send)
