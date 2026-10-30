@@ -3,7 +3,6 @@
 import asyncio
 import logging
 import random
-import re
 
 import httpx
 from google import genai
@@ -27,7 +26,6 @@ class GeminiProvider:
     mode = "gemini"
 
     def __init__(self, config: Settings):
-        self.key = config.gemini_api_key.get_secret_value()
         self.model = config.gemini_model
         self.attempts = config.gemini_attempts
         self.client = genai.Client(
@@ -84,11 +82,7 @@ class GeminiProvider:
                     if needle in raw:
                         reason = label
                         break
-                safe = (exc.message or "").replace(self.key, "[REDACTED]")
-                safe = re.sub(r"AIza[\w-]+", "[REDACTED]", safe)
-                logger.error(
-                    "gemini_api_error status=%s reason=%s detail=%s", exc.code, reason, safe[:400]
-                )
+                logger.error("gemini_api_error status=%s reason=%s", exc.code, reason)
                 code = "rate_limited" if exc.code == 429 else "provider_failure"
                 retry = exc.code in {429, 500, 502, 503, 504}
             except (httpx.TimeoutException, TimeoutError):

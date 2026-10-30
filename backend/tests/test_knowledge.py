@@ -332,3 +332,23 @@ def test_sourced_answer_persists_references_and_rechecks_removal(knowledge):
     )
     assert r.status_code == 503
     assert r.json()["request"]["error_code"] == "unavailable"
+
+
+def test_exhausted_crash_lease_becomes_recoverable(knowledge):
+    from datetime import timedelta
+
+    from app.auth.crypto import now
+
+    k = knowledge
+    sid = upload(k).json()["id"]
+    approve(k, sid)
+    with Session(k.engine) as db:
+        job = db.scalar(select(ProcessingJob))
+        job.state, job.attempts = "processing", 3
+        job.lease_until = now() - timedelta(seconds=1)
+        db.commit()
+    assert not run_one(k.engine, k.store, FakeEmbeddings())
+    with Session(k.engine) as db:
+        job = db.scalar(select(ProcessingJob))
+        assert job.state == "failed" and job.error_code == "attempts_exhausted"
+        assert db.scalar(select(KnowledgeDocument)).processing_status == "failed"

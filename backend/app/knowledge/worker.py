@@ -27,6 +27,20 @@ logger = logging.getLogger("edumind")
 
 def run_one(engine, store, embeddings):
     with Session(engine) as db:
+        exhausted = list(
+            db.execute(
+                select(
+                    ProcessingJob.id, ProcessingJob.document_id, ProcessingJob.lease_until
+                ).where(
+                    ProcessingJob.state == "processing",
+                    ProcessingJob.attempts >= 3,
+                    ProcessingJob.lease_until < now(),
+                )
+            )
+        )
+    for jid, did, lease in exhausted:
+        fail(engine, jid, did, lease, "attempts_exhausted")
+    with Session(engine) as db:
         job = db.scalar(
             select(ProcessingJob)
             .where(
