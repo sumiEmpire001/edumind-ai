@@ -26,10 +26,22 @@ def write_limit(request: Request, owner: UUID) -> None:
 @router.get("/chat/capabilities")
 def capabilities(request: Request, identity: Current):
     provider = request.app.state.academic_provider
+    settings = request.app.state.settings
     return {
         "available": provider.available,
         "mode": provider.mode,
         "timeout_seconds": request.app.state.settings.chat_timeout_seconds,
+        "attachments_available": bool(
+            getattr(request.app.state, "object_store", None)
+            or (settings.blob_store_id and settings.blob_read_write_token)
+            or (
+                settings.storage_bucket
+                and settings.storage_access_key
+                and settings.storage_secret_key
+            )
+        ),
+        "attachment_types": ["image/png", "image/jpeg", "text/plain"],
+        "image_generation": False,
     }
 
 
@@ -54,17 +66,20 @@ def detail(
     before_sequence: int | None = Query(None, ge=1),
     limit: int = Query(50, ge=1, le=100),
 ):
+    service.regular_owned(db, identity.user.id, cid)
     return service.detail(db, identity.user.id, cid, before_sequence, limit)
 
 
 @router.patch("/conversations/{cid}", response_model=ConversationView)
 def rename(cid: UUID, data: ConversationUpdate, request: Request, db: DB, identity: Current):
+    service.regular_owned(db, identity.user.id, cid)
     write_limit(request, identity.user.id)
     return service.rename(db, identity.user.id, cid, data.title, request.state.request_id)
 
 
 @router.delete("/conversations/{cid}", status_code=204)
 def remove(cid: UUID, request: Request, db: DB, identity: Current):
+    service.regular_owned(db, identity.user.id, cid, include_deleted=True)
     write_limit(request, identity.user.id)
     service.remove(db, identity.user.id, cid, request.state.request_id)
 
@@ -74,9 +89,18 @@ async def submit(
     cid: UUID, data: TurnCreate, request: Request, response: Response, db: DB, identity: Current
 ):
     owner, sid = identity.user.id, identity.session.id
+    service.regular_owned(db, owner, cid)
     # Release the authentication read transaction before waiting on any provider call.
     db.rollback()
     await run_in_threadpool(write_limit, request, owner)
+    from fastapi import HTTPException
+
+    from app.api.attachments import storage
+
+    try:
+        store = storage(request)
+    except HTTPException:
+        store = None
     result = await service.submit(
         request.app.state.engine,
         owner,
@@ -86,6 +110,7 @@ async def submit(
         request.app.state.academic_provider,
         request.app.state.settings,
         request.state.request_id,
+        store,
     )
     if result.request.status == "pending":
         response.status_code = 202

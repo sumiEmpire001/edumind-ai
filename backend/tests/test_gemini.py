@@ -7,7 +7,7 @@ import pytest
 from google.genai import errors, types
 
 from app.ai.gemini import GeminiProvider
-from app.ai.provider import AcademicError, Turn
+from app.ai.provider import AcademicError, MediaPart, Turn
 
 
 def provider(effects):
@@ -33,6 +33,17 @@ def test_followup():
     args = p.client.aio.models.generate_content.call_args.kwargs
     assert [c.role for c in args["contents"]] == ["user", "model", "user"]
     assert "academic tutor" in args["config"].system_instruction
+
+
+def test_image_bytes_are_passed_as_inline_parts():
+    p = provider([reply()])
+    asyncio.run(
+        p.generate([Turn("user", "Explain this image", (MediaPart("image/png", b"fixture"),))])
+    )
+    content = p.client.aio.models.generate_content.call_args.kwargs["contents"][0]
+    assert content.parts[0].text == "Explain this image"
+    assert content.parts[1].inline_data.data == b"fixture"
+    assert content.parts[1].inline_data.mime_type == "image/png"
 
 
 @pytest.mark.parametrize(

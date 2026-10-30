@@ -1,0 +1,170 @@
+.studio-main {
+  max-width: 1450px;
+}
+.studio-intro {
+  margin-bottom: 2rem;
+}
+.studio-intro h1 {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 1.1;
+  max-width: 800px;
+}
+.studio-intro p {
+  max-width: 760px;
+}
+.studio-layout {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+.studio-drafts,
+.studio-document {
+  background: #fffdf8;
+  border: 1px solid #d8e0d5;
+  border-radius: 18px;
+  padding: 1.4rem;
+  min-width: 0;
+}
+.studio-drafts {
+  display: grid;
+  gap: 1rem;
+  position: sticky;
+  top: 100px;
+}
+.studio-drafts h2 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+.studio-drafts a {
+  overflow-wrap: anywhere;
+  text-decoration: none;
+  padding: 0.6rem;
+  border-radius: 8px;
+}
+.studio-drafts a[aria-current] {
+  background: #e4eee7;
+}
+.studio-drafts small {
+  display: block;
+  color: #62706b;
+  margin-top: 0.35rem;
+}
+.studio-create,
+.studio-editor {
+  display: grid;
+  gap: 1rem;
+}
+.studio-document label {
+  display: grid;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+.studio-document input,
+.studio-document select,
+.studio-document textarea {
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid #bacbc0;
+  background: #fff;
+  padding: 0.8rem;
+  border-radius: 8px;
+  font: inherit;
+  color: #173c34;
+}
+.studio-document textarea {
+  resize: vertical;
+  line-height: 1.65;
+}
+.studio-document-header {
+  margin-bottom: 1.5rem;
+}
+.studio-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin: 1rem 0;
+}
+.studio-controls button,
+.studio-editor-tools button,
+.studio-sections button {
+  border: 1px solid #bbcfc1;
+  border-radius: 8px;
+  padding: 0.65rem 0.8rem;
+  background: #f4f7f0;
+  cursor: pointer;
+  color: #173c34;
+}
+.studio-controls button:disabled,
+.studio-editor-tools button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.studio-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+.studio-sections button {
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.studio-sections button[aria-current] {
+  background: #173c34;
+  color: white;
+}
+.studio-sections small {
+  display: block;
+  opacity: 0.75;
+  margin-top: 0.3rem;
+}
+.studio-editor-tools {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.7rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.studio-editor-tools h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+.studio-preview {
+  padding: 1rem;
+  background: #fff;
+  min-height: 240px;
+  border: 1px solid #d8e0d5;
+  overflow-wrap: anywhere;
+  overflow-x: auto;
+}
+.studio-boundary,
+.studio-main .field-hint {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #5d6e62;
+}
+.studio-boundary {
+  border-top: 1px solid #d8e0d5;
+  padding-top: 1rem;
+  margin-top: 2rem;
+}
+@media (max-width: 900px) {
+  .studio-layout {
+    grid-template-columns: 1fr;
+  }
+  .studio-drafts {
+    position: static;
+    max-height: 260px;
+    overflow: auto;
+  }
+  .studio-sections {
+    grid-template-columns: 1fr;
+  }
+  .studio-document {
+    padding: 1rem;
+  }
+  .studio-controls button {
+    flex: 1 1 45%;
+  }
+}

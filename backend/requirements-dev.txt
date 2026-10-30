@@ -60,6 +60,7 @@ cffi==2.1.1
 charset-normalizer==3.5.2
     # via
     #   -r requirements.txt
+    #   reportlab
     #   requests
 click==8.5.0
     # via
@@ -192,6 +193,10 @@ packaging==26.3
     #   pytest
 pgvector==0.5.1
     # via -r requirements.txt
+pillow==13.0.0
+    # via
+    #   -r requirements.txt
+    #   reportlab
 pip==26.2.2
     # via pip-api
 pip-api==0.0.35
@@ -266,6 +271,8 @@ python-multipart==0.0.32
     #   -r requirements.txt
     #   vercel-queue
 pyyaml==6.0.3
+    # via -r requirements.txt
+reportlab==5.1.0
     # via -r requirements.txt
 requests==2.34.2
     # via

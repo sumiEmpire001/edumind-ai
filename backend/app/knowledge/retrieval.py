@@ -78,7 +78,14 @@ class RetrievalProvider:
             "say so and use general knowledge.\n" + json.dumps(references, ensure_ascii=False)
         )
         answer = await self.provider.generate(
-            [*context[:-1], Turn("user", prompt + "\nStudent question:\n" + context[-1].content)]
+            [
+                *context[:-1],
+                Turn(
+                    "user",
+                    prompt + "\nStudent question:\n" + context[-1].content,
+                    context[-1].media,
+                ),
+            ]
         )
         return SourcedAnswer(answer, references)
 

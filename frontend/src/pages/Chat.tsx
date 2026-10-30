@@ -18,6 +18,12 @@ import {
 } from "../chat/api";
 import { Markdown } from "../chat/Markdown";
 import { CopyButton } from "../chat/CopyButton";
+import {
+  Attachments,
+  ImagePreview,
+  type Attachment,
+} from "../chat/Attachments";
+import { downloadPdf } from "../studio/download";
 
 const failureText: Record<string, string> = {
   timeout: "The answer timed out. Your question was saved.",
@@ -84,11 +90,16 @@ export default function Chat() {
   const [pollFailed, setPollFailed] = useState(false);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [attached, setAttached] = useState<Attachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const attachmentVersion = useRef(0);
+  const [exporting, setExporting] = useState(false);
   const sendGuard = useRef(false);
   const attempt = useRef<{
     id: string;
     conversation: string;
     content: string;
+    attachmentKey: string;
   } | null>(null);
   const [creating, setCreating] = useState(false);
   const createGuard = useRef(false);
@@ -155,6 +166,9 @@ export default function Chat() {
     setError("");
     setNotice("");
     setDraft("");
+    setAttached([]);
+    attachmentVersion.current++;
+    setUploading(false);
     setRenaming(false);
     setPollFailed(false);
     detailVersion.current++;
@@ -180,6 +194,27 @@ export default function Chat() {
     };
   }, [conversationId, loadDetail]);
   const pending = !!data?.requests.some((q) => q.status === "pending");
+  useEffect(() => {
+    if (!conversationId || !cap?.attachments_available) return;
+    let active = true;
+    const version = attachmentVersion.current;
+    void client
+      .request(`/conversations/${conversationId}/attachments`)
+      .then((value) => {
+        if (
+          active &&
+          version === attachmentVersion.current &&
+          Array.isArray(value)
+        )
+          setAttached(value as Attachment[]);
+      })
+      .catch(() => {
+        /* Uploads still report their own errors. */
+      });
+    return () => {
+      active = false;
+    };
+  }, [client, conversationId, cap?.attachments_available]);
   useEffect(() => {
     if (!conversationId || !pending || pollFailed) return;
     const timer = setInterval(() => {
@@ -242,7 +277,14 @@ export default function Chat() {
     event.preventDefault();
     const content = draft.trim();
     const id = conversationId;
-    if (!id || !content || !cap?.available || pending || sendGuard.current)
+    if (
+      !id ||
+      !content ||
+      !cap?.available ||
+      pending ||
+      uploading ||
+      sendGuard.current
+    )
       return;
     sendGuard.current = true;
     setSending(true);
@@ -251,18 +293,31 @@ export default function Chat() {
     if (
       !attempt.current ||
       attempt.current.conversation !== id ||
-      attempt.current.content !== content
+      attempt.current.content !== content ||
+      attempt.current.attachmentKey !== attached.map((a) => a.id).join(",")
     )
-      attempt.current = { id: crypto.randomUUID(), conversation: id, content };
+      attempt.current = {
+        id: crypto.randomUUID(),
+        conversation: id,
+        content,
+        attachmentKey: attached.map((a) => a.id).join(","),
+      };
     const question = attempt.current;
     try {
-      await api.send(id, question.id, content, cap.timeout_seconds);
+      await api.send(
+        id,
+        question.id,
+        content,
+        cap.timeout_seconds,
+        attached.map((a) => a.id),
+      );
       const fresh = await loadDetail(id);
       if (
         selected.current === id &&
         fresh.requests.some((q) => q.id === question.id)
       ) {
         setDraft("");
+        setAttached([]);
         attempt.current = null;
       }
       void loadList();
@@ -273,6 +328,7 @@ export default function Chat() {
         const saved = fresh.requests.find((q) => q.id === question.id);
         if (saved) {
           setDraft("");
+          setAttached([]);
           attempt.current = null;
           setError("");
           if (saved.status === "succeeded")
@@ -331,6 +387,25 @@ export default function Chat() {
       if (selected.current === id) setError(friendly(cause));
     } finally {
       setEditing(false);
+    }
+  }
+  async function exportPdf(messageId?: string) {
+    if (!conversationId || exporting) return;
+    const id = conversationId;
+    setExporting(true);
+    setError("");
+    try {
+      const result = await downloadPdf(
+        client,
+        `/conversations/${id}/export`,
+        messageId ? { message_id: messageId } : {},
+      );
+      if (selected.current === id)
+        setNotice(`PDF downloaded: ${result.pages} pages.`);
+    } catch (cause) {
+      if (selected.current === id) setError(friendly(cause));
+    } finally {
+      setExporting(false);
     }
   }
   return (
@@ -442,6 +517,15 @@ export default function Chat() {
             </button>
             {data && (
               <>
+                <button
+                  type="button"
+                  disabled={exporting || !data.messages.length}
+                  onClick={() => {
+                    void exportPdf();
+                  }}
+                >
+                  {exporting ? "Preparing PDF…" : "Export conversation PDF"}
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -603,7 +687,37 @@ export default function Chat() {
                     text={m.content}
                     label={m.role === "user" ? "Copy question" : "Copy answer"}
                   />
+                  {m.role === "assistant" && (
+                    <button
+                      type="button"
+                      disabled={exporting}
+                      onClick={() => {
+                        void exportPdf(m.id);
+                      }}
+                    >
+                      Download answer PDF
+                    </button>
+                  )}
                 </div>
+                {!!m.attachments?.length && (
+                  <ul
+                    className="message-attachments"
+                    aria-label="Attached files"
+                  >
+                    {m.attachments.map((a) => (
+                      <li key={a.id}>
+                        <span>{a.filename}</span>
+                        {a.mime.startsWith("image/") && (
+                          <ImagePreview
+                            client={client}
+                            conversationId={conversationId!}
+                            item={a}
+                          />
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {m.role === "user" ? (
                   <p className="question-text">{m.content}</p>
                 ) : (
@@ -633,6 +747,26 @@ export default function Chat() {
         </div>
         {data && (
           <form className="chat-composer" onSubmit={send}>
+            <Attachments
+              key={conversationId}
+              client={client}
+              conversationId={conversationId!}
+              available={!!cap?.attachments_available}
+              disabled={sending || pending}
+              value={attached}
+              onChange={(items) => {
+                if (selected.current === conversationId) {
+                  attachmentVersion.current++;
+                  setAttached(items);
+                }
+              }}
+              onBusy={(busy) => {
+                if (selected.current === conversationId) {
+                  if (busy) attachmentVersion.current++;
+                  setUploading(busy);
+                }
+              }}
+            />
             <label htmlFor="academic-question">Your question</label>
             <textarea
               id="academic-question"
@@ -651,7 +785,11 @@ export default function Chat() {
                 type="submit"
                 className="button"
                 disabled={
-                  sending || pending || !cap?.available || !draft.trim()
+                  sending ||
+                  pending ||
+                  uploading ||
+                  !cap?.available ||
+                  !draft.trim()
                 }
               >
                 {sending || pending ? "Waiting…" : "Send question"}

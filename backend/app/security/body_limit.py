@@ -13,6 +13,12 @@ class BodyLimitMiddleware:
         limit = (
             3 * 1024 * 1024
             if scope["path"] in {"/api/v1/knowledge/submissions", "/api/v1/inbox/submissions"}
+            or (
+                scope["path"].startswith("/api/v1/conversations/")
+                and scope["path"].endswith("/attachments")
+            )
+            else 128 * 1024
+            if scope["path"].startswith("/api/v1/documents")
             else self.limit
         )
         body = bytearray()
