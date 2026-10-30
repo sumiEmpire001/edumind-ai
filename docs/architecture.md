@@ -6,7 +6,7 @@ A modular monolith for the API, a separately deployed ingestion worker, a React 
 and a separate local inbox process. Avoid microservices and Redis initially.
 PostgreSQL is the source of truth for users, conversations, review decisions,
 processing jobs, and searchable vectors. Private object storage holds originals.
-Only the foundation modules are implemented in Phase 1.
+Phase 1 foundation and Phase 2 authentication modules are implemented; see their reports for verification.
 
 ## Stack and deployment arrangement
 
@@ -59,11 +59,11 @@ indexed ownership/status fields, and constrained state transitions.
 | message_sources | Message/chunk FKs, citation ordinal, source snapshot for historical integrity |
 | processing_jobs | Document version FK, unique operation key, attempts, lease, retry time, sanitized error |
 | audit_logs | Actor FK, action, target, request ID, timestamp; sanitized immutable event records |
-| refresh_sessions | Hashed rotating refresh token family, owner FK, expiry and revocation |
+| auth_sessions / refresh_tokens | Session family, user FK, absolute expiry/revocation and hashed single-use refresh verifiers |
 | service_credentials | Hashed revocable inbox credential, owner FK, scope, expiry, last used |
 
-Schema changes are introduced with owning features. Phase 1 enables vector only.
-No speculative domain tables are created before their invariants are tested.
+Schema changes are introduced with owning features. Phase 1 enables vector; Phase 2 adds identity, sessions, audit and rate limits.
+Academic domain tables remain deferred until their owning phases.
 Duplicate uploads use content hashes and idempotency keys. New versions cannot silently
 replace active content; supersession/deactivation and retrieval exclusion are transactional.
 Embedding model changes require a new versioned index and successful re-indexing before activation.

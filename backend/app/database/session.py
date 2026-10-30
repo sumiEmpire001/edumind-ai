@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.config import Settings
 
-SCHEMA_REVISION = "0001_vector"
+SCHEMA_REVISION = "0002_identity"
 
 
 def build_engine(settings: Settings) -> Engine:
