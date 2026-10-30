@@ -74,3 +74,46 @@ test("contributor upload, administrator preview/review, processing and removal",
     page.getByText("Removed from retrieval.", { exact: true }),
   ).toBeVisible();
 });
+
+test("admin inbox credential only creates pending uploads and can be revoked", async ({
+  page,
+}) => {
+  await login(page, "admin-e2e@example.com");
+  await expect(page).toHaveURL(/\/app$/);
+  await page.goto("/app/knowledge");
+  const name = `Windows inbox ${randomUUID()}`;
+  await page.getByLabel("Computer or inbox name").fill(name);
+  await page.getByRole("button", { name: "Create inbox credential" }).click();
+  const field = page.getByLabel("New inbox credential", { exact: true });
+  await expect(field).toHaveAttribute("type", "password");
+  const token = await field.inputValue();
+  expect(token.startsWith("emi_")).toBe(true);
+  const upload = await page.request.post(
+    `${api}/inbox/submissions?filename=inbox.txt&title=Inbox%20verification`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "text/plain",
+      },
+      data: `A verified inbox lesson ${name}`,
+    },
+  );
+  expect(upload.status()).toBe(201);
+  expect((await upload.json()).status).toBe("pending");
+  const credential = page
+    .getByRole("article")
+    .filter({ has: page.getByRole("heading", { name, exact: true }) });
+  await credential.getByRole("button", { name: "Revoke credential" }).click();
+  await expect(credential).toContainText("Revoked");
+  const forbidden = await page.request.post(
+    `${api}/inbox/submissions?filename=inbox.txt&title=Inbox`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "text/plain",
+      },
+      data: "Another lesson",
+    },
+  );
+  expect(forbidden.status()).toBe(401);
+});

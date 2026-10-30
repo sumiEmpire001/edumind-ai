@@ -119,3 +119,15 @@ class MessageSource(Base):
     label: Mapped[str] = mapped_column(String(16))
     title: Mapped[str] = mapped_column(String(200))
     location: Mapped[str] = mapped_column(String(100))
+
+
+class InboxCredential(Base):
+    __tablename__ = "inbox_credentials"
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

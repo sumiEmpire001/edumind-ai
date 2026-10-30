@@ -99,6 +99,8 @@ class Settings(BaseSettings):
         if self.cookie_samesite == "none" and not self.secure_cookies:
             raise ValueError("SameSite=None requires production HTTPS secure cookies")
         if self.app_env == "production":
+            if self.storage_endpoint and not self.storage_endpoint.startswith("https://"):
+                raise ValueError("Production object storage endpoints must use HTTPS")
             url = make_url(self.database_url.get_secret_value())
             import os
 

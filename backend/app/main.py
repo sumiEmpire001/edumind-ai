@@ -14,6 +14,7 @@ from app.ai.provider import AcademicProvider
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
 from app.api.health import router
+from app.api.inbox import router as inbox_router
 from app.api.knowledge import router as knowledge_router
 from app.api.users import router as users_router
 from app.core.config import Settings, get_settings
@@ -115,4 +116,5 @@ def create_app(
     app.include_router(users_router)
     app.include_router(chat_router)
     app.include_router(knowledge_router)
+    app.include_router(inbox_router)
     return app

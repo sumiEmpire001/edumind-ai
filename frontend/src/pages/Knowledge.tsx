@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { InboxSettings } from "../components/InboxSettings";
 import { useAuth } from "../auth/AuthContext";
 import { errorMessage } from "../api/client";
 import "./Knowledge.css";
@@ -426,6 +427,7 @@ export default function Knowledge() {
       )}
       {admin && (
         <>
+          <InboxSettings />
           <section className="knowledge-card">
             <h2>Contributor applications</h2>
             {applications.length === 0 && <p>No applications yet.</p>}
