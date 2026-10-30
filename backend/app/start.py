@@ -1,5 +1,6 @@
 """Single-instance test deployment entrypoint; production uses a release migration job."""
 
+import asyncio
 import logging
 import os
 import re
@@ -49,6 +50,21 @@ def main():
                 contents="What is 2 + 2? Reply briefly.",
             )
             logging.warning("gemini_generation_check nonempty=%s", bool(response.text))
+            from app.ai.gemini import GeminiProvider
+            from app.ai.provider import AcademicError, Turn
+            from app.core.config import get_settings
+
+            async def probe():
+                provider = GeminiProvider(get_settings())
+                try:
+                    answer = await provider.generate([Turn("user", "What is 2 + 2?")])
+                    logging.warning("gemini_adapter_check nonempty=%s", bool(answer))
+                except AcademicError as exc:
+                    logging.warning("gemini_adapter_check category=%s", exc.code)
+                finally:
+                    await provider.aclose()
+
+            asyncio.run(probe())
         except errors.APIError as exc:
             message = (exc.message or "").replace(key, "[REDACTED]") if key else "missing key"
             message = re.sub(r"AIza[\w-]+", "[REDACTED]", message)
