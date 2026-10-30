@@ -79,7 +79,7 @@ def rename(cid: UUID, data: ConversationUpdate, request: Request, db: DB, identi
 
 @router.delete("/conversations/{cid}", status_code=204)
 def remove(cid: UUID, request: Request, db: DB, identity: Current):
-    service.regular_owned(db, identity.user.id, cid)
+    service.regular_owned(db, identity.user.id, cid, include_deleted=True)
     write_limit(request, identity.user.id)
     service.remove(db, identity.user.id, cid, request.state.request_id)
 

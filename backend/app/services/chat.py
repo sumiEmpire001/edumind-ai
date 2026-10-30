@@ -112,8 +112,8 @@ def listing(db: Session, owner: UUID, offset: int, limit: int):
     return {"items": items, "total": total, "offset": offset, "limit": limit}
 
 
-def regular_owned(db, owner, cid, lock=False):
-    row = owned(db, owner, cid, lock=lock)
+def regular_owned(db, owner, cid, lock=False, include_deleted=False):
+    row = owned(db, owner, cid, lock=lock, include_deleted=include_deleted)
     if db.scalar(select(StudioDocument.id).where(StudioDocument.conversation_id == cid)):
         raise HTTPException(404, "Conversation not found.")
     return row
