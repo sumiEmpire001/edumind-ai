@@ -48,7 +48,7 @@ test("drafts, expands, edits, reloads and exports a document", async ({
       "# Edited conclusion\nForce is mass times acceleration. Verify all calculations.",
     );
   await page.getByRole("button", { name: "Save section", exact: true }).click();
-  await expect(page.getByRole("status")).toHaveText("Section saved.");
+  await expect(page.getByText("Section saved.", { exact: true })).toBeVisible();
   await page.reload();
   await page.getByRole("button", { name: /3\. Conclusion/ }).click();
   await expect(page.getByLabel("Section text", { exact: true })).toHaveValue(
