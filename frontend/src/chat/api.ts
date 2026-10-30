@@ -14,6 +14,7 @@ export interface Message {
   content: string;
   provider: string | null;
   created_at: string;
+  attachments?: { id: string; filename: string; mime: string; size: number }[];
 }
 export interface QuestionRequest {
   id: string;
@@ -31,6 +32,8 @@ export interface Capabilities {
   available: boolean;
   mode: "unconfigured" | "verification" | "gemini";
   timeout_seconds: number;
+  attachments_available?: boolean;
+  image_generation?: boolean;
 }
 export const validId = (id: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -158,11 +161,20 @@ export class ChatApi {
       method: "DELETE",
     });
   }
-  async send(id: string, request_id: string, content: string, timeout: number) {
+  async send(
+    id: string,
+    request_id: string,
+    content: string,
+    timeout: number,
+    attachment_ids: string[] = [],
+  ) {
     const r = record(
       await this.client.request(
         `/conversations/${encodeURIComponent(id)}/messages`,
-        { method: "POST", body: JSON.stringify({ request_id, content }) },
+        {
+          method: "POST",
+          body: JSON.stringify({ request_id, content, attachment_ids }),
+        },
         (timeout + 15) * 1000,
       ),
     );

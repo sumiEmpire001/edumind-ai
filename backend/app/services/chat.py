@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app.ai.provider import AcademicError, AcademicProvider, Turn
-from app.auth.crypto import digest, now, utc
+from app.auth.crypto import now, utc
 from app.auth.dependencies import unauthorized
 from app.core.config import Settings
 from app.models.chat import ChatRequest, Conversation, Message
@@ -23,6 +23,7 @@ from app.models.knowledge import (
     KnowledgeSubmission,
     MessageSource,
 )
+from app.models.studio import ChatAttachment
 from app.schemas.chat import (
     ConversationDetail,
     ConversationView,
@@ -31,6 +32,7 @@ from app.schemas.chat import (
     TurnCreate,
     TurnResult,
 )
+from app.services.attachments import attach_turn, question_hash
 
 logger = logging.getLogger("edumind")
 
@@ -180,13 +182,14 @@ def prepare(
     config: Settings,
     available: bool,
     trace: str,
+    store=None,
 ) -> Ticket:
     with Session(engine, expire_on_commit=False) as db:
         live_identity(db, owner, sid)
         row = owned(db, owner, cid, lock=True)
         existing = db.get(ChatRequest, data.request_id)
         if existing:
-            if existing.conversation_id != cid or existing.content_hash != digest(data.content):
+            if existing.conversation_id != cid or existing.content_hash != question_hash(data):
                 raise HTTPException(
                     409, "This request identifier was already used for another question."
                 )
@@ -196,6 +199,9 @@ def prepare(
             return Ticket([], result(db, existing, True))
         if not available:
             raise HTTPException(503, "Academic answers are not connected yet.")
+        current_turn, attachment_metadata = attach_turn(
+            db, owner, cid, data.content, data.attachment_ids, store, data.request_id
+        )
         active = list(
             db.scalars(
                 select(ChatRequest).where(
@@ -220,27 +226,46 @@ def prepare(
                 .limit(20)
             )
         )
-        pairs, used = [], len(data.content)
+        pairs, used = [], len(current_turn.content)
         for index in range(0, len(previous), 2):
             pair = previous[index : index + 2]
             if len(pair) != 2 or pair[0].role != "assistant" or pair[1].role != "user":
                 raise HTTPException(503, "Conversation history is temporarily unavailable.")
-            cost = sum(len(m.content) for m in pair)
+            past = Turn("user", pair[1].content)
+            if pair[1].attachments:
+                if index < 4:
+                    past, _ = attach_turn(
+                        db,
+                        owner,
+                        cid,
+                        pair[1].content,
+                        [item["id"] for item in pair[1].attachments],
+                        store,
+                    )
+                else:
+                    past = Turn(
+                        "user",
+                        pair[1].content
+                        + "\n[Earlier attachments omitted; ask for reattachment if needed.]",
+                    )
+            cost = len(past.content) + len(pair[0].content)
             if used + cost > config.chat_context_characters:
                 break
             used += cost
-            pairs.append([Turn("user", pair[1].content), Turn("assistant", pair[0].content)])
-        context = [turn for pair in reversed(pairs) for turn in pair] + [Turn("user", data.content)]
+            pairs.append([past, Turn("assistant", pair[0].content)])
+        context = [turn for pair in reversed(pairs) for turn in pair] + [current_turn]
         request = ChatRequest(
             id=data.request_id,
             conversation_id=cid,
-            content_hash=digest(data.content),
+            content_hash=question_hash(data),
             status="pending",
             created_at=now(),
             deadline_at=now() + timedelta(seconds=config.chat_timeout_seconds + 10),
         )
         db.add(request)
         db.flush()
+        for identifier in data.attachment_ids:
+            db.get(ChatAttachment, identifier).request_id = request.id
         row.last_sequence += 1
         db.add(
             Message(
@@ -249,6 +274,7 @@ def prepare(
                 sequence=row.last_sequence,
                 role="user",
                 content=data.content,
+                attachments=attachment_metadata,
                 provider=None,
                 created_at=now(),
             )
@@ -364,9 +390,10 @@ async def submit(
     provider: AcademicProvider,
     config: Settings,
     trace: str,
+    store=None,
 ) -> TurnResult:
     ticket = await run_in_threadpool(
-        prepare, engine, owner, sid, cid, data, config, provider.available, trace
+        prepare, engine, owner, sid, cid, data, config, provider.available, trace, store
     )
     if ticket.cached is not None:
         return ticket.cached

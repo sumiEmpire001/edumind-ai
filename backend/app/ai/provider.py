@@ -1,11 +1,18 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal, Protocol
+
+
+@dataclass(frozen=True)
+class MediaPart:
+    mime: str
+    data: bytes = field(repr=False)
 
 
 @dataclass(frozen=True)
 class Turn:
     role: Literal["user", "assistant"]
     content: str
+    media: tuple[MediaPart, ...] = ()
 
 
 class AcademicError(Exception):

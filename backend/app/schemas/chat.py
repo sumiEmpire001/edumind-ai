@@ -26,6 +26,14 @@ class ConversationUpdate(InputModel):
 class TurnCreate(InputModel):
     request_id: UUID
     content: str = Field(min_length=1, max_length=4000)
+    attachment_ids: list[UUID] = Field(default_factory=list, max_length=2)
+
+    @field_validator("attachment_ids")
+    @classmethod
+    def unique_attachments(cls, value):
+        if len(set(value)) != len(value):
+            raise ValueError("Attachments must be unique")
+        return value
 
     @field_validator("content")
     @classmethod
@@ -50,6 +58,7 @@ class MessageView(BaseModel):
     sequence: int
     role: Literal["user", "assistant"]
     content: str
+    attachments: list[dict] = Field(default_factory=list)
     provider: str | None
     created_at: datetime
 

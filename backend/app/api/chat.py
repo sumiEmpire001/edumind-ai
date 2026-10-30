@@ -26,10 +26,22 @@ def write_limit(request: Request, owner: UUID) -> None:
 @router.get("/chat/capabilities")
 def capabilities(request: Request, identity: Current):
     provider = request.app.state.academic_provider
+    settings = request.app.state.settings
     return {
         "available": provider.available,
         "mode": provider.mode,
         "timeout_seconds": request.app.state.settings.chat_timeout_seconds,
+        "attachments_available": bool(
+            getattr(request.app.state, "object_store", None)
+            or (settings.blob_store_id and settings.blob_read_write_token)
+            or (
+                settings.storage_bucket
+                and settings.storage_access_key
+                and settings.storage_secret_key
+            )
+        ),
+        "attachment_types": ["image/png", "image/jpeg", "text/plain"],
+        "image_generation": False,
     }
 
 
@@ -77,6 +89,14 @@ async def submit(
     # Release the authentication read transaction before waiting on any provider call.
     db.rollback()
     await run_in_threadpool(write_limit, request, owner)
+    from fastapi import HTTPException
+
+    from app.api.attachments import storage
+
+    try:
+        store = storage(request)
+    except HTTPException:
+        store = None
     result = await service.submit(
         request.app.state.engine,
         owner,
@@ -86,6 +106,7 @@ async def submit(
         request.app.state.academic_provider,
         request.app.state.settings,
         request.state.request_id,
+        store,
     )
     if result.request.status == "pending":
         response.status_code = 202

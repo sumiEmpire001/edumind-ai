@@ -11,6 +11,7 @@ import { Account } from "./pages/Account";
 import { RouteBoundary } from "./components/RouteBoundary";
 const Knowledge = lazy(() => import("./pages/Knowledge"));
 const Chat = lazy(() => import("./pages/Chat"));
+const Studio = lazy(() => import("./pages/Studio"));
 function ChatRoute() {
   const location = useLocation();
   return (
@@ -40,8 +41,9 @@ function RouteEffects() {
       "/app": "Your workspace",
       "/app/account": "My account",
       "/app/knowledge": "Knowledge library",
+      "/app/studio": "Document Studio",
     };
-    document.title = `${titles[pathname] || (pathname.startsWith("/app/chat") ? "Study chat" : "Page not found")} · EduMind AI`;
+    document.title = `${titles[pathname] || (pathname.startsWith("/app/chat") ? "Study chat" : pathname.startsWith("/app/studio/") ? "Document Studio" : "Page not found")} · EduMind AI`;
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView?.();
     else {
       window.scrollTo?.(0, 0);
@@ -76,6 +78,26 @@ export default function App({ client }: { client?: SessionClient }) {
               }
             />
             <Route path="account" element={<Account />} />
+            <Route
+              path="studio"
+              element={
+                <Suspense
+                  fallback={<p role="status">Opening Document Studio…</p>}
+                >
+                  <Studio />
+                </Suspense>
+              }
+            />
+            <Route
+              path="studio/:documentId"
+              element={
+                <Suspense
+                  fallback={<p role="status">Opening Document Studio…</p>}
+                >
+                  <Studio />
+                </Suspense>
+              }
+            />
             <Route path="chat" element={<ChatRoute />} />
             <Route path="chat/:conversationId" element={<ChatRoute />} />
           </Route>

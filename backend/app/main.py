@@ -11,8 +11,10 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.ai.gemini import build_provider
 from app.ai.provider import AcademicProvider
+from app.api.attachments import router as attachments_router
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
+from app.api.documents import router as documents_router
 from app.api.health import router
 from app.api.inbox import router as inbox_router
 from app.api.knowledge import router as knowledge_router
@@ -57,6 +59,8 @@ def create_app(
         openapi_url=None if config.app_env == "production" else "/openapi.json",
     )
     app.state.settings = config
+    app.include_router(attachments_router)
+    app.include_router(documents_router)
     app.state.academic_provider = provider or build_provider(config)
     app.add_middleware(BodyLimitMiddleware, limit=config.max_request_bytes)
     app.add_middleware(

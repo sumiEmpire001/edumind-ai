@@ -42,7 +42,9 @@ cffi==2.1.1
     #   argon2-cffi-bindings
     #   cryptography
 charset-normalizer==3.5.2
-    # via requests
+    # via
+    #   reportlab
+    #   requests
 click==8.5.0
     # via uvicorn
 cryptography==50.0.2
@@ -115,6 +117,10 @@ opentelemetry-api==1.45.2
     # via fastapi
 pgvector==0.5.1
     # via -r requirements.in
+pillow==13.0.0
+    # via
+    #   -r requirements.in
+    #   reportlab
 psycopg==3.3.6
     # via -r requirements.in
 psycopg-binary==3.3.6 ; implementation_name != 'pypy'
@@ -155,6 +161,8 @@ python-multipart==0.0.32
     # via vercel-queue
 pyyaml==6.0.3
     # via uvicorn
+reportlab==5.1.0
+    # via -r requirements.in
 requests==2.34.2
     # via
     #   google-auth

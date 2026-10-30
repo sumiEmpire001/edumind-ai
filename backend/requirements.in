@@ -13,3 +13,6 @@ boto3
 pypdf
 defusedxml
 vercel
+
+reportlab
+Pillow

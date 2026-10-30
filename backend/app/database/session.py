@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.config import Settings
 
-SCHEMA_REVISION = "0005_inbox"
+SCHEMA_REVISION = "0006_studio"
 
 
 def build_engine(settings: Settings) -> Engine:

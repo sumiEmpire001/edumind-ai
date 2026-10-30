@@ -30,7 +30,7 @@ it("preserves the request ID and uses a provider-aware timeout", async () => {
     `/conversations/${cid}/messages`,
     {
       method: "POST",
-      body: JSON.stringify({ request_id: rid, content: "Question" }),
+      body: JSON.stringify({ request_id: rid, content: "Question", attachment_ids: [] }),
     },
     35000,
   );
