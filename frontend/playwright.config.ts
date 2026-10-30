@@ -22,7 +22,7 @@ export default defineConfig({
   webServer: [
     {
       command:
-        "python -m uvicorn app.main:create_app --factory --app-dir ../backend --host 127.0.0.1 --port 8000 --no-access-log",
+        "python -m uvicorn tests.e2e_app:create_e2e_app --factory --app-dir ../backend --host 127.0.0.1 --port 8000 --no-access-log",
       url: "http://127.0.0.1:8000/api/v1/health/ready",
       timeout: 60000,
       reuseExistingServer: !process.env.CI,

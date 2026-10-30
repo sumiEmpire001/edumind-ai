@@ -27,11 +27,11 @@ export function Overview() {
             <em>We’ll build the clarity.</em>
           </h2>
           <p>
-            Your personal space is ready. Guided AI conversations and learning
-            materials are coming soon.
+            Your conversation workspace is ready. Keep your questions together
+            and check the availability of answers in study chat.
           </p>
-          <Link className="button" to="/app/account">
-            Manage your account <span aria-hidden="true">↗</span>
+          <Link className="button" to="/app/chat">
+            Start a conversation <span aria-hidden="true">↗</span>
           </Link>
         </div>
         <div className="welcome-art" aria-hidden="true">

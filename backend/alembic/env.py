@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, pool
 from alembic import context
 from app.core.config import get_settings
 from app.database.base import Base
-from app.models import identity  # noqa: F401 — register domain tables for autogenerate
+from app.models import chat, identity  # noqa: F401 — register domain tables for autogenerate
 
 url = get_settings().database_url.get_secret_value()
 

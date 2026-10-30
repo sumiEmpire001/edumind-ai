@@ -212,15 +212,20 @@ export class SessionClient {
   private async authorized(
     path: string,
     init: RequestInit = {},
+    timeoutMs = 12000,
   ): Promise<unknown> {
     if (!this.token || this.expires <= Date.now() + 30000) await this.recover();
     if (!this.token) throw new ApiError(401);
     const previous = this.token;
     try {
-      return await apiJson(path, {
-        ...init,
-        headers: { ...init.headers, Authorization: `Bearer ${previous}` },
-      });
+      return await apiJson(
+        path,
+        {
+          ...init,
+          headers: { ...init.headers, Authorization: `Bearer ${previous}` },
+        },
+        timeoutMs,
+      );
     } catch (error) {
       if (!(error instanceof ApiError) || error.status !== 401) throw error;
       // Only retry a rejected authentication request, never a timeout or network failure.
@@ -228,10 +233,14 @@ export class SessionClient {
       if (!this.token) throw new ApiError(401);
       const retryToken = this.token;
       try {
-        return await apiJson(path, {
-          ...init,
-          headers: { ...init.headers, Authorization: `Bearer ${retryToken}` },
-        });
+        return await apiJson(
+          path,
+          {
+            ...init,
+            headers: { ...init.headers, Authorization: `Bearer ${retryToken}` },
+          },
+          timeoutMs,
+        );
       } catch (retryError) {
         if (
           retryError instanceof ApiError &&
@@ -242,6 +251,10 @@ export class SessionClient {
         throw retryError;
       }
     }
+  }
+
+  request(path: string, init: RequestInit = {}, timeoutMs = 12000) {
+    return this.authorized(path, init, timeoutMs);
   }
 
   async getMe() {

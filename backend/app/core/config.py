@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     login_account_limit: int = Field(default=5, ge=1)
     register_ip_limit: int = Field(default=5, ge=1)
     auth_ip_limit: int = Field(default=60, ge=1)
+    chat_user_limit: int = Field(default=20, ge=1)
+    chat_timeout_seconds: float = Field(default=20, ge=0.05, le=60)
+    chat_context_characters: int = Field(default=24000, ge=4000, le=48000)
     max_request_bytes: int = Field(default=16384, ge=1024, le=65536)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
