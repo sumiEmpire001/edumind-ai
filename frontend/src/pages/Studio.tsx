@@ -328,7 +328,8 @@ export default function Studio() {
               method: "POST",
               body: JSON.stringify(data),
             },
-            45000,
+            // The API permits at most 60 seconds, plus transport/recovery overhead.
+            75000,
           )) as Draft;
           if (selected.current !== id) return;
           setDoc(current);
