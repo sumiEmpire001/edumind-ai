@@ -58,6 +58,12 @@ First PostgreSQL CI run 41134204510 passed concurrency/ranking checks; the resto
 needed an explicit --dbname option. That test-command correction and the session fix are
 awaiting the new full run. No failed or skipped restore is counted as successful evidence.
 
+The restore rehearsal then exposed a test-isolation flaw: Alembic could find an existing
+public version table on search_path and skip creating the new test schema's tables.
+Tests now give migrations an explicit version-table schema and assert that users,
+knowledge_chunks and alembic_version actually exist there before running any fixture.
+The CLI option is test-only; normal deployed migration behavior remains unchanged.
+
 ## Evidence and remaining boundaries
 
 Local prompt-boundary test passed. Local PostgreSQL startup is restricted in this

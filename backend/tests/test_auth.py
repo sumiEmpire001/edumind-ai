@@ -40,8 +40,26 @@ def engine():
             "DATABASE_URL": isolated.render_as_string(hide_password=False),
             "APP_ENV": "test",
         }
-        subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], env=env, check=True)
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "alembic",
+                "-x",
+                f"version_table_schema={schema}",
+                "upgrade",
+                "head",
+            ],
+            env=env,
+            check=True,
+        )
         test_engine = create_engine(isolated)
+        with test_engine.connect() as connection:
+            for table in ("users", "knowledge_chunks", "alembic_version"):
+                assert connection.scalar(
+                    text("SELECT to_regclass(:qualified)"),
+                    {"qualified": f"{schema}.{table}"},
+                ), f"Missing isolated test table: {table}"
     else:
         test_engine = create_engine(
             "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
