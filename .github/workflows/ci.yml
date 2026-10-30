@@ -23,6 +23,7 @@ jobs:
       DATABASE_URL: postgresql+psycopg://edumind:ci-only-password@localhost:5432/edumind_test
       TEST_DATABASE_URL: postgresql+psycopg://edumind:ci-only-password@localhost:5432/edumind_test
       APP_ENV: test
+      RUN_BACKUP_REHEARSAL: 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -33,7 +34,11 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: ruff check .
       - run: ruff format --check .
-      - run: pytest -q
+      - name: Check backup client compatibility
+        run: |
+          pg_dump --version
+          pg_restore --version
+      - run: pytest -q -rP
       - run: pip-audit -r requirements.txt
   frontend:
     runs-on: ubuntu-latest
