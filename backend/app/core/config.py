@@ -2,7 +2,7 @@ from functools import lru_cache
 from typing import Literal
 from urllib.parse import urlparse
 
-from pydantic import SecretStr, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
@@ -12,7 +12,40 @@ class Settings(BaseSettings):
     app_env: Literal["development", "test", "production"] = "development"
     database_url: SecretStr
     cors_origins: list[str] = ["http://localhost:5173"]
+    jwt_secret: SecretStr
+    jwt_issuer: str = "edumind-api"
+    jwt_audience: str = "edumind-web"
+    access_token_minutes: int = Field(default=10, ge=1, le=30)
+    refresh_token_days: int = Field(default=14, ge=1, le=30)
+    cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+    login_ip_limit: int = Field(default=20, ge=1)
+    login_account_limit: int = Field(default=5, ge=1)
+    register_ip_limit: int = Field(default=5, ge=1)
+    auth_ip_limit: int = Field(default=60, ge=1)
+    max_request_bytes: int = Field(default=16384, ge=1024, le=65536)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+
+    @field_validator("jwt_secret")
+    @classmethod
+    def strong_signing_key(cls, value: SecretStr) -> SecretStr:
+        raw = value.get_secret_value()
+        if len(raw.encode()) < 32 or "REPLACE" in raw.upper():
+            raise ValueError(
+                "JWT_SECRET must be an independently generated secret of at least 32 bytes"
+            )
+        return value
+
+    @property
+    def secure_cookies(self) -> bool:
+        return self.app_env == "production"
+
+    @property
+    def refresh_cookie(self) -> str:
+        return "__Secure-edumind_refresh" if self.secure_cookies else "edumind_refresh"
+
+    @property
+    def csrf_cookie(self) -> str:
+        return "__Secure-edumind_csrf" if self.secure_cookies else "edumind_csrf"
 
     @field_validator("database_url")
     @classmethod
@@ -46,6 +79,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def production_transport(self) -> "Settings":
+        if self.cookie_samesite == "none" and not self.secure_cookies:
+            raise ValueError("SameSite=None requires production HTTPS secure cookies")
         if self.app_env == "production":
             url = make_url(self.database_url.get_secret_value())
             if url.query.get("sslmode") not in {"verify-ca", "verify-full"}:

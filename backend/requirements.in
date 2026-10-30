@@ -5,3 +5,6 @@ psycopg[binary]
 pydantic-settings
 alembic
 pgvector
+pwdlib[argon2]
+PyJWT
+email-validator

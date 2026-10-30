@@ -1,7 +1,7 @@
 # Roadmap and verification gates
 
 Work on one phase at a time. Stop at an unmet gate and record evidence; compilation
-alone never satisfies a functional gate. This delivery implements Phase 1 only.
+alone never satisfies a functional gate. Phases 1 and 2 are verified. Phase 2 is delivered in PR #1; Phase 3 has not started.
 
 | Phase | Deliverable | Required gate before next phase |
 |---|---|---|

@@ -3,10 +3,11 @@
 **Teach students, not just answer questions.**
 
 AI academic support platform, built in verified phases. This repository currently
-contains **Phase 1 only**: React/Vite foundation, FastAPI health checks,
-PostgreSQL/pgvector configuration, Alembic baseline, tests, CI, and documentation.
-It is not a production-ready learning platform yet. No authentication, AI calls,
-uploads, RAG indexing, or local watcher is implemented.
+contains the **Phase 1 foundation and Phase 2 backend authentication**: React/Vite shell,
+FastAPI, PostgreSQL/pgvector migrations, student registration, login, rotating sessions,
+backend role permissions, user management, tests, CI and documentation.
+It is not a production-ready learning platform yet. Frontend login forms, AI calls,
+uploads, RAG indexing and the local watcher arrive in later phases.
 
 ## Requirements
 
@@ -53,6 +54,13 @@ Activate with `.venv\Scripts\Activate.ps1` on Windows PowerShell or
 cd backend
 pip install -r requirements-dev.txt
 cp .env.example .env
+```
+
+Generate a signing secret with `python -c "import secrets; print(secrets.token_urlsafe(48))"`
+and put it in `JWT_SECRET` in `backend/.env` (replace the example placeholder).
+Then run:
+
+```sh
 alembic upgrade head
 uvicorn app.main:create_app --factory --reload --port 8000 --no-access-log
 ```
@@ -74,7 +82,7 @@ npm run dev
 ```
 
 Open http://localhost:5173. `Check connection` calls the backend readiness API.
-The page is a development shell, not the Phase 3 landing page or a simulated login.
+The page remains a development shell; frontend authentication is Phase 3.
 Only `VITE_API_BASE_URL` is public configuration; never put secrets in Vite variables.
 
 ## Verification
@@ -90,7 +98,8 @@ pip-audit -r requirements.txt
 
 For database integration, create a **separate disposable** PostgreSQL database,
 set `TEST_DATABASE_URL` to its psycopg URL, then run `pytest -q -m integration`.
-The integration test applies the baseline twice and executes real vector SQL.
+The integration tests apply migrations and execute real vector SQL, while the auth suite
+runs API, concurrency and admin bootstrap tests inside an isolated PostgreSQL schema.
 Without that variable it explicitly skips; a skip is not a successful database test.
 CI provisions an isolated pgvector PostgreSQL service and runs both suites.
 
@@ -110,6 +119,8 @@ npm audit --audit-level=high
 - [Phased roadmap and acceptance gates](docs/roadmap.md)
 - [Deployment and migrations](docs/deployment.md)
 - [Phase 1 development report](docs/phase-1-report.md)
+- [Authentication and admin operations](docs/authentication.md)
+- [Phase 2 development report](docs/phase-2-report.md)
 
 ## Source control
 
