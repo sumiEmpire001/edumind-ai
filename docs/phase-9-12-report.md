@@ -32,13 +32,25 @@ logout. No pending/rejected material was made searchable.
 
 This branch adds inbox API scope/expiry/revocation/upload tests, an HTTPS-only production
 storage check and standalone-service crash/retry/duplicate tests. Frontend lint, TypeScript,
-45 unit tests and production build pass locally. Backend and cross-platform CI must pass
-on this final branch before deployment. Dependency audits are required in CI.
+45 unit tests and production build pass locally. Final CI run 41124969741 passed backend
+PostgreSQL tests (130 collected), 26 desktop/mobile browser tests, dependency audits and
+11 inbox tests on each of Linux and Windows. The browser suite exercises password change,
+contributor review, knowledge eligibility and inbox credential revocation.
+
+A route-focus effect could run after first paint and interfere with the first mobile field
+entry. It now runs before paint; the regression flow verifies all three password values
+and successful password change/re-login. Office extraction now preserves supplied core
+metadata and actual presentation order for slide citations.
 
 ## Phases 11 and 12: deployment and readiness
 
-Prepared the operational assessment, hosted activation order, Windows setup, source-control
-updates and final regression gates. Private storage credentials, a separate worker, a real
+Deployed the combined implementation to the existing Render API and Vercel frontend after
+CI passed. Render dep-dbig3pui0phs739cm7mg is live; Vercel
+ dpl_AYquXKpa5GvqL7TobLbHfdsxB2VY is READY. Post-release frontend-origin HTTP checks
+passed sign-in/refresh, real Gemini generation, conversation persistence, contributor
+application, student permission rejection, logout and token revocation; both health
+endpoints passed. The deployed landing page was checked in a browser. Prepared the
+operational assessment, hosted activation order, Windows setup and remaining gates. Private storage credentials, a separate worker, a real
 administrator and real-corpus retrieval still require hosted verification. RAG stays disabled
 until those pass. No paid worker is purchased and no private real administrator credential is
 invented. The free test database expires 29 November 2026 and is not a production database plan.
@@ -50,6 +62,8 @@ and the user's own Windows folder. Automatic GitHub-to-Vercel integration is sti
 
 ## Source control
 
-Work is isolated on phase-9-12/final-stabilization and stacked on the verified Phase 6–8
-branch. No destructive migration, production reset, inbox approval bypass, public object
+All six phase PRs were merged into main after final checks passed. Release application
+commit: 6e8385e656fba2ea1687083b857e667ace1322b5. The Render deployment branch was
+fast-forwarded to that verified release; it was not force-pushed. No phase branches were
+deleted. No destructive migration, production reset, inbox approval bypass, public object
 bucket, secret commit or future expansion feature was added.

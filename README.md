@@ -2,14 +2,15 @@
 
 **Teach students, not just answer questions.**
 
-AI academic support platform, built in verified phases. This repository currently
-contains the **Phases 1–4 foundation, authentication, frontend and conversations**: React/Vite shell,
-FastAPI, PostgreSQL/pgvector migrations, student registration, login, rotating sessions,
-backend role permissions, user management, tests, CI and documentation.
-It is not a production-ready learning platform yet. Registration, login and account pages
-and private conversation history are implemented. Live AI calls, uploads, approved RAG
-indexing and the local watcher arrive in later phases. Phase 4 uses an explicitly isolated
-test provider; normal startup does not fabricate AI answers.
+AI academic support platform with student conversations, live Gemini answers,
+contributor applications, private document submissions, administrator review,
+approved-source retrieval and a separate Windows-compatible knowledge inbox.
+
+The hosted test app is at https://edumind-ai-an-empire.vercel.app/ . Live Gemini chat
+is verified. The document workflows and local inbox are implemented and tested;
+hosted storage, a separately approved worker, administrator bootstrap and real-corpus
+verification remain activation gates. Document retrieval stays disabled until those
+checks pass. See [release readiness](docs/final-readiness.md) for evidence and limits.
 
 ## Requirements
 
@@ -70,7 +71,9 @@ uvicorn app.main:create_app --factory --reload --port 8000 --no-access-log
 API docs: http://localhost:8000/docs (development only).
 Liveness: `/api/v1/health/live`. Readiness: `/api/v1/health/ready`.
 Readiness returns 503 when the database, pgvector, or required migration is missing.
-No tables or migrations are applied automatically at application startup.
+Normal application startup never creates tables. The explicit test-deployment entrypoint
+`python -m app.start` runs migrations only when `RUN_DATABASE_MIGRATIONS=true`.
+Use a separate release migration operation for production.
 
 ## Frontend
 
@@ -84,9 +87,9 @@ npm run dev
 ```
 
 Open http://localhost:5173. Start the backend and apply its migrations before signing in.
-The frontend includes the landing, registration/login, protected workspace, account and
-study-chat pages. The normal server supports conversation management and clearly reports
-that live academic answers are not connected until Phase 5.
+The frontend includes landing, registration/login, workspace, account, study chat and
+role-aware knowledge-library pages. Gemini is available only when the backend key is
+configured; uploads report unavailable until private storage is configured.
 Only `VITE_API_BASE_URL` is public configuration; never put secrets in Vite variables.
 
 ## Verification
@@ -129,11 +132,18 @@ npm audit --audit-level=high
 - [Phase 3 development report](docs/phase-3-report.md)
 - [Conversation architecture and testing](docs/conversations.md)
 - [Phase 4 development report](docs/phase-4-report.md)
+- [Gemini verification](docs/phase-5-report.md)
+- [Knowledge platform](docs/phase-6-8-report.md)
+- [Knowledge operations](docs/knowledge-operations.md)
+- [Local inbox setup](services/knowledge-inbox/README.md)
+- [Final implementation](docs/phase-9-12-report.md)
+- [Release readiness and remaining gates](docs/final-readiness.md)
 
 ## Source control
 
 Repository: https://github.com/sumiEmpire001/edumind-ai
 
-Phase 4 is stacked on Phase 3, which is stacked on Phase 2 until earlier PRs are merged. Use feature branches and pull requests. Require both CI jobs
-before merging when repository settings allow it. Do not commit `.env`, uploads,
-databases, tokens, or private academic materials. Cloud deployment belongs to Phase 11.
+Use feature branches and pull requests, and require backend, frontend, browser and
+Linux/Windows inbox checks. Do not commit `.env`, uploads, databases, tokens, or private
+academic materials. The hosted frontend currently uses a source snapshot; GitHub remains
+the canonical source. Automatic Vercel Git integration is a remaining setup task.

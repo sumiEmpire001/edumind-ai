@@ -1,7 +1,10 @@
 # Roadmap and verification gates
 
-Work on one phase at a time. Stop at an unmet gate and record evidence; compilation
-alone never satisfies a functional gate. Phases 1–4 are verified. Phase 4 evidence is recorded in docs/phase-4-report.md. Live Gemini integration remains Phase 5.
+The user approved implementing the remaining phases together. Keep each functional gate
+explicit: compilation alone never satisfies a gate. Phases 1–5 have verification evidence,
+including hosted Gemini chat. Phases 6–12 have implementation and automated checks; hosted
+activation gates remain tracked in final-readiness.md. Do not mark the whole platform
+production-ready until those checks are complete.
 
 | Phase | Deliverable | Required gate before next phase |
 |---|---|---|
@@ -21,5 +24,3 @@ alone never satisfies a functional gate. Phases 1–4 are verified. Phase 4 evid
 Deferred: public API products, native mobile app, institutional tenancy, billing,
 recommendations, additional AI providers and advanced analytics. Do not implement now.
 
-First milestone: reproducible foundation with meaningful checks. Phase 2 cannot start
-while Phase 1 database or source-control verification is incomplete.

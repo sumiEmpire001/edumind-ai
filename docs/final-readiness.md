@@ -1,13 +1,21 @@
 # EduMind release assessment and remaining activation gates
 
-Status: final-phase implementation and verification in progress. Do not label the entire
-platform production-ready until every hosted gate below has evidence.
+Status: final-phase implementation and automated verification passed. Hosted activation
+remains incomplete. Do not label the entire platform production-ready until every hosted
+gate below has evidence.
 
 ## Completed evidence
 
-- Phase 5 backend is hosted on Render; public React frontend is hosted on Vercel.
-- A live test through the frontend-origin proxy passed account registration, login,
-  conversation creation, an actual Gemini academic answer and logout.
+- Combined application release 6e8385e656fba2ea1687083b857e667ace1322b5 is live.
+  Render deploy dep-dbig3pui0phs739cm7mg is live; Vercel deployment
+  dpl_AYquXKpa5GvqL7TobLbHfdsxB2VY is READY on the existing public frontend alias.
+  This deploys the implementation; it does not activate unavailable storage/RAG.
+- Post-release frontend-origin HTTP verification passed registration, login, refresh,
+  student identity, contributor application/persistence, conversation creation/persistence,
+  an actual Gemini answer, logout and access-token revocation. Student admin reads and
+  inbox credential minting returned 403. Storage/RAG capabilities remained correctly off.
+  Both health endpoints returned 200. The deployed landing page was checked in a browser.
+  Full hosted role/browser/RAG verification remains a separate gate.
 - Phases 6-8 are in PR #5. GitHub run 41121122221 passed backend, frontend and browser jobs
   after the HNSW metadata and browser-navigation fixes.
 - Contributor/admin workflows, extraction, private-object adapters, durable processing,
@@ -15,6 +23,12 @@ platform production-ready until every hosted gate below has evidence.
   are implemented. Pending/rejected/failed/removed/old versions cannot be retrieved.
 - Phase 9 adds a separate Windows-compatible local service with hashed, scoped, expiring,
   revocable inbox credentials and durable local retries/recovery. Every upload stays pending.
+- Final GitHub run 41124969741 passed every job: backend PostgreSQL tests, 45 frontend
+  unit tests, 26 desktop Chromium/mobile WebKit browser cases, dependency audits, and
+  11 local-inbox cases on both Linux and Windows. The backend suite collects 130 tests.
+- The mobile route-focus regression is fixed; actual password change and re-login pass.
+- Office metadata is retained only when supplied, and PowerPoint citations follow
+  presentation slide order. Private first-administrator setup is disabled by default.
 - No Gemini/storage key or real credential is committed; examples contain empty placeholders.
 
 ## Remaining hosted gates
@@ -25,8 +39,9 @@ platform production-ready until every hosted gate below has evidence.
 2. Approve and provision a dedicated worker service. Render's Starter worker is listed at
    $7/month on https://render.com/pricing; billing and plan availability must be checked
    in the account before purchase. No paid worker has been created or approved.
-3. Deploy verified source and additive migrations, then configure a real administrator
-   through private bootstrap. A real administrator email/password is not guessed or created.
+3. Configure a real administrator through private bootstrap. Verified source and additive
+   migrations are deployed; readiness confirms the required schema revision. A real
+   administrator email/password is not guessed or created.
 4. Verify private upload/preview, approval/rejection, extraction, live embeddings, vector
    retrieval, citations, source removal and re-indexing on the hosted system. Only then
    enable RAG_ENABLED. It remains false until evidence supports activation.
