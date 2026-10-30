@@ -463,6 +463,7 @@ export default function Studio() {
               <label>
                 Target length
                 <select
+                  aria-label="Target length"
                   value={pages}
                   onChange={(e) => setPages(Number(e.target.value))}
                 >
