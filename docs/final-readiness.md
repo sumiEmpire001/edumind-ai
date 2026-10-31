@@ -8,13 +8,18 @@ gate below has evidence.
 
 - Studio extension PRs #8–#11 are merged. API release
   f304e61d1f73e600646933b81f5699ba2bf49ea7 is deployed as Render
-  dep-dbiioe8473hc73d7ulb0 (live). Vercel dpl_38PqawLKe8e2SroV9mPmWQcwxUfY
+  dep-dbijnu5g1s2s73denkj0 (live after private-storage activation).
+  Vercel dpl_38PqawLKe8e2SroV9mPmWQcwxUfY
   is READY on frontend release 35bd6f638912a82b07400f0823f0c5e4b0191b54.
   GitHub run 41146020236 passed all jobs after run 41144322302 passed
   165 PostgreSQL backend tests, 50 frontend
   tests, 30 desktop/mobile browser cases, audits and both inbox platforms. See
   [Studio release evidence](studio-report.md) for deployment verification and limits.
-  Personal attachments still require private storage; image generation is disabled.
+  Personal PNG/JPEG/TXT uploads and private image previews are live and verified through
+  the public app origin, including pending recovery, limits, invalid images, anonymous
+  and wrong-conversation access rejection, removal and private-object cleanup.
+  Hosted image understanding remains unverified after Gemini quota errors.
+  Image generation is disabled.
   A hosted 11,400-word synthetic draft exported as 31 actual, nonempty PDF pages,
   and a short live Gemini answer succeeded. Long AI report generation has a separate
   hosted verification gate: the final attempt returned Gemini HTTP 429 (quota/rate limit).
@@ -61,9 +66,10 @@ gate below has evidence.
 
 ## Remaining hosted gates
 
-1. Configure the private object store's scoped credential on the Render API and worker.
-   An empty private Vercel Blob store (edumind-knowledge) is provisioned. Do not use public
-   object URLs. No storage credential has yet been configured for this milestone.
+1. The Render API's scoped private-store credential is configured and personal upload/
+   preview/removal passed on 31 October 2026. The existing edumind-knowledge store remains
+   private. Configure the same scoped storage access on a worker only after that service
+   is separately approved and provisioned. Do not use public object URLs.
 2. Approve and provision a dedicated worker service. Render's Starter worker is listed at
    $7/month on https://render.com/pricing; billing and plan availability must be checked
    in the account before purchase. No paid worker has been created or approved.

@@ -10,12 +10,13 @@ Document Studio adds saved long-form reports, editable outlines, section draftin
 expansion, and PDF exports with a cover, contents and numbered pages. Study chat also
 exports answers and conversations. See the [Studio idea and scope](docs/studio-plan.md)
 and [implementation evidence](docs/studio-report.md). Target lengths guide drafting;
-exports show the actual pages. Personal PNG/JPEG/TXT attachments require private storage
-configuration. Image generation remains disabled.
+exports show the actual pages. Personal PNG/JPEG/TXT uploads and private image previews
+are live and verified. Live image understanding and long AI report drafting still need
+verification after the Gemini quota issue clears. Image generation remains disabled.
 
 The hosted test app is at https://edumind-ai-an-empire.vercel.app/ . Live Gemini chat
 is verified. The document workflows and local inbox are implemented and tested;
-hosted storage, a separately approved worker, administrator bootstrap and real-corpus
+hosted reviewed-knowledge processing, a separately approved worker, administrator bootstrap and real-corpus
 verification remain activation gates. Document retrieval stays disabled until those
 checks pass. See [release readiness](docs/final-readiness.md) for evidence and limits.
 

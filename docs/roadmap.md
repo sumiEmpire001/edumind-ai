@@ -29,7 +29,7 @@ recommendations, additional AI providers and advanced analytics. Do not implemen
 | Scope | State | Outstanding evidence |
 |---|---|---|
 | Phases 1–5 | Implemented, CI verified, hosted core flows verified | Full deployed browser coverage remains in QA |
-| Phases 6–8 | Implemented, automated workflow checks passed | Real private storage, worker, administrator and hosted document/RAG flows |
+| Phases 6–8 | Implemented, automated workflow checks passed; personal private storage verified live | Worker, administrator and complete hosted reviewed-document/RAG flows |
 | Phase 9 | Implemented, Linux/Windows CI verified | User's actual Windows folder and real scoped credential |
 | Phase 10 | Regression suites and isolated restore/concurrency/retrieval rehearsals passed | Human real-model evaluation, full hosted browser/load assessment |
 | Phase 11 | Core frontend/API/database deployed | Hosted document activation, hosted backup restore, automatic Vercel source integration |
@@ -47,7 +47,9 @@ expansion, report/answer/conversation PDF export, and private personal image/tex
 See [the idea](studio-plan.md) and [release evidence](studio-report.md).
 
 Text drafting and PDF exports use the existing API without a paid worker. Personal
-attachments remain unavailable on the hosted app until its private storage credential is
-configured. Image generation is disabled. These new features do not close the original
+PNG/JPEG/TXT uploads, authenticated previews, recovery and removal are now verified live
+after configuring the existing private store on the API. Long AI drafting and hosted image
+understanding remain verification gates after Gemini quota errors. Image generation is
+disabled. These new features do not close the original
 administrator, reviewed knowledge, worker, hosted restore or Windows-folder gates above.
 

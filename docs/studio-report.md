@@ -15,8 +15,9 @@ PRs #8–#11. No paid service or image-generation provider was provisioned.
 - Private PNG/JPEG and UTF-8 TXT attachment support with authenticated image previews,
   unused-upload recovery, normalized images, owner/conversation checks and byte/pixel/
   quota/concurrency limits. Attachments stay outside the reviewed knowledge index.
-- Gemini inline image understanding when private storage is configured. Image generation
-  is explicitly disabled. Live uploads remain visibly unavailable without the store credential.
+- Gemini inline image understanding support; hosted model verification remains pending
+  after the quota error. Private uploads and previews are now active. Image generation
+  is explicitly disabled. Uploads fail closed if storage configuration is absent.
 - Additive migration 0006_studio. Report backing histories are isolated from regular
   conversations. Durable reservations and optimistic revisions protect generation and edits.
 
@@ -45,27 +46,40 @@ tables and code. Complex LaTeX is retained as source notation.
 The frontend is READY as Vercel dpl_38PqawLKe8e2SroV9mPmWQcwxUfY on release
 35bd6f638912a82b07400f0823f0c5e4b0191b54. Its source is unchanged by the later API fixes.
 The latest API release is f304e61d1f73e600646933b81f5699ba2bf49ea7, Render deployment
-dep-dbiioe8473hc73d7ulb0 (live).
+dep-dbijnu5g1s2s73denkj0 (live), following private-storage activation on 31 October 2026.
+The existing private store credential is configured only on the Render API. Its value
+was not committed, exposed in the frontend, or transferred through a plaintext file.
+The Free API plan and existing Vercel Hobby store remain in use; no billing setting changed.
+
+A public-frontend-origin synthetic-account check passed actual PNG upload and authenticated
+JPEG preview, TXT upload, pending-attachment recovery, the two-pending-file limit (409),
+spoofed-image rejection (422), unauthenticated preview rejection (401), and rejection of
+a preview through another conversation (404). Both unused private objects were removed,
+removed previews returned 404, pending uploads became empty, test conversations were
+soft-removed, and the session logged out. Capabilities now report attachments available
+and image generation disabled. This verifies storage independently of Gemini quota.
 
 Public-frontend-origin checks passed registration/login, twelve manual section saves,
 persistence, and export of 11,400 words as a real 31-page PDF. Every page contained text,
 and the reported count matched the parsed PDF. This was a marked synthetic layout fixture,
 not an AI-generated academic report. A separate short live Gemini question succeeded.
 Test drafts/conversations were soft-removed and the sessions logged out. Capabilities
-correctly reported uploads and image generation unavailable, and a 60-second request limit.
+reported uploads unavailable before activation, image generation disabled, and a
+60-second request limit.
 
 Live report checks exposed provider timeouts and then MAX_TOKENS; the deadline, reasoning
 and output budgets above address those findings. The final live check after the output
-budget change was blocked by Gemini HTTP 429 (quota/rate limit). No billing was enabled
-and no further model calls were made after that result. Long-section drafting, replay
+budget change was blocked by Gemini HTTP 429 (quota/rate limit). A follow-up check on
+31 October returned 429 again. No billing was enabled. Storage activation verification
+did not make further model calls. Long-section drafting, replay
 and generated-section export remain a hosted verification gate until quota is available.
 Do not claim a successful full live
 30–45-page AI report based on the synthetic renderer/export tests or one generated section.
 
 ## Remaining activation gates
 
-- Live private uploads and hosted vision require the existing private store credential,
-  which remains unconfigured. Automated storage/provider tests do not replace this gate.
+- Live private uploads and authenticated previews are verified. Hosted image understanding
+  still requires a successful real-model check after quota is available.
 - Image generation is not enabled or purchased.
 - Users must review academic claims, calculations and references, then expand/edit until
   the actual exported length and content meet their requirements.
