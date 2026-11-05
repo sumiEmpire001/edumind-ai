@@ -421,7 +421,7 @@ export default function Studio() {
         </p>
       )}
       {notice && (
-        <p role="status" className="notice">
+        <p role="status" aria-label="Document updates" className="notice">
           {notice}
         </p>
       )}
@@ -443,7 +443,11 @@ export default function Studio() {
             onChange={setDraftQuery}
           />
           {listBusy && (
-            <p className="studio-empty-note" role="status">
+            <p
+              className="studio-empty-note"
+              role="status"
+              aria-label="Draft list updates"
+            >
               Loading your drafts…
             </p>
           )}
@@ -473,7 +477,11 @@ export default function Studio() {
           {!!draftQuery.trim() &&
             !!documents.length &&
             !visibleDocuments.length && (
-              <p className="studio-empty-note" role="status">
+              <p
+                className="studio-empty-note"
+                role="status"
+                aria-label="Draft list updates"
+              >
                 No matching draft titles. Try another title or clear your
                 search.
               </p>
