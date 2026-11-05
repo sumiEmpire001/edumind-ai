@@ -81,7 +81,6 @@ export function WorkspaceLayout() {
             </span>
             <div>
               <strong>{user.full_name}</strong>
-              <span className="user-email">{user.email}</span>
               <span>
                 {user.role === "admin"
                   ? "Administrator"

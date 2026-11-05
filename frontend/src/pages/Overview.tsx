@@ -47,9 +47,18 @@ export function Overview() {
           </h1>
           <p>What would you like to work on today?</p>
         </div>
-        <Link className="button" to="/app/chat">
-          Start a conversation <Icon name="arrow" />
-        </Link>
+        <div className="dashboard-heading-actions">
+          <span className="account-status">
+            {user.role === "admin"
+              ? "Administrator"
+              : user.role === "contributor"
+                ? "Contributor"
+                : "Student"}
+          </span>
+          <Link className="button" to="/app/chat">
+            Start a conversation <Icon name="arrow" />
+          </Link>
+        </div>
       </div>
       <section className="dashboard-banner">
         <div>

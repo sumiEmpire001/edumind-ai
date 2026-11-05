@@ -1343,3 +1343,18 @@ button:disabled {
   color: var(--muted);
   margin: 0;
 }
+
+.dashboard-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+@media (max-width: 760px) {
+  .dashboard-heading-actions {
+    width: 100%;
+  }
+  .dashboard-heading-actions .account-status {
+    margin: 0;
+  }
+}
