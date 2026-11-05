@@ -1319,3 +1319,20 @@ button:disabled {
     box-shadow: none;
   }
 }
+/* Keep supporting text readable on light surfaces. */
+.nav-caption {
+  color: #596f64;
+}
+.paper-label {
+  color: #52694a;
+}
+.logout-hint,
+.user-chip .user-email {
+  font-size: 11px;
+}
+@media (max-width: 760px) {
+  .chat-actions button,
+  .copy-button {
+    min-height: 44px;
+  }
+}
