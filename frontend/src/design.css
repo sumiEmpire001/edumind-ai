@@ -882,7 +882,7 @@ button:disabled {
   }
   .studio-main .studio-drafts {
     position: static;
-    max-height: 240px;
+    max-height: 360px;
     overflow-y: auto;
   }
   .account-layout {
