@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { errorMessage } from "../api/client";
 import { Brand } from "./Brand";
+import { Icon } from "./Icon";
 export function WorkspaceLayout() {
   const { client, user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -35,10 +36,16 @@ export function WorkspaceLayout() {
         >
           Menu <span aria-hidden="true">{open ? "−" : "+"}</span>
         </button>
-        <span className="workspace-tag">Your learning space</span>
+        <span className="workspace-tag">Think clearly. Learn deeply.</span>
       </header>
       <aside
         className={open ? "workspace-sidebar is-open" : "workspace-sidebar"}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && open) {
+            setOpen(false);
+            toggle.current?.focus();
+          }
+        }}
       >
         <nav
           id="workspace-nav"
@@ -52,19 +59,19 @@ export function WorkspaceLayout() {
         >
           <p className="nav-caption">YOUR WORKSPACE</p>
           <NavLink to="/app" end onClick={() => setOpen(false)}>
-            <span aria-hidden="true">⌂</span> Overview
+            <Icon name="home" /> Overview
           </NavLink>
           <NavLink to="/app/chat" onClick={() => setOpen(false)}>
-            <span aria-hidden="true">✦</span> Study chat
+            <Icon name="chat" /> Study chat
           </NavLink>
           <NavLink to="/app/knowledge" onClick={() => setOpen(false)}>
-            <span aria-hidden="true">▤</span> Knowledge library
+            <Icon name="book" /> Knowledge library
           </NavLink>
           <NavLink to="/app/studio" onClick={() => setOpen(false)}>
-            <span aria-hidden="true">▧</span> Document Studio
+            <Icon name="document" /> Document Studio
           </NavLink>
           <NavLink to="/app/account" onClick={() => setOpen(false)}>
-            <span aria-hidden="true">◎</span> My account
+            <Icon name="user" /> My account
           </NavLink>
         </nav>
         <div className="sidebar-bottom">
@@ -74,6 +81,7 @@ export function WorkspaceLayout() {
             </span>
             <div>
               <strong>{user.full_name}</strong>
+              <span className="user-email">{user.email}</span>
               <span>
                 {user.role === "admin"
                   ? "Administrator"
@@ -104,6 +112,17 @@ export function WorkspaceLayout() {
           </Link>
         </div>
       </aside>
+      {open && (
+        <button
+          type="button"
+          className="nav-scrim"
+          aria-label="Close workspace menu"
+          onClick={() => {
+            setOpen(false);
+            toggle.current?.focus();
+          }}
+        />
+      )}
       <div className="workspace-content">
         <Outlet />
       </div>

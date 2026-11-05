@@ -119,6 +119,14 @@ jobs:
         working-directory: frontend
       - run: npm run test:e2e
         working-directory: frontend
+      - name: Preserve responsive UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: responsive-ui-screenshots
+          path: frontend/test-results/**/attachments/*.png
+          retention-days: 3
+          if-no-files-found: ignore
       - name: Preserve browser failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
