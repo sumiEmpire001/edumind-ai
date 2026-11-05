@@ -198,3 +198,46 @@ it("shows a private or missing conversation as unavailable", async () => {
   );
   expect(screen.queryByLabelText("Your question")).not.toBeInTheDocument();
 });
+
+it("filters loaded titles without losing the current question or sending a request", async () => {
+  const other = {
+    ...conversation,
+    id: "ec5f0920-e74e-4834-a7e4-217990c445d4",
+    title: "Biology revision",
+  };
+  const { fetcher } = setup(true, (path) =>
+    path.endsWith("/conversations")
+      ? json({
+          items: [{ ...conversation, title: "Mechanics revision" }, other],
+          total: 40,
+        })
+      : null,
+  );
+  const field = await screen.findByLabelText("Your question");
+  await screen.findByRole("link", { name: /Mechanics revision/ });
+  fireEvent.change(field, { target: { value: "Keep my unfinished question" } });
+  const search = screen.getByRole("searchbox", {
+    name: "Search conversation titles",
+  });
+  fireEvent.change(search, { target: { value: "  MECHANICS  " } });
+  expect(
+    screen.getByRole("link", { name: /Mechanics revision/ }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("link", { name: /Biology revision/ }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByText(/Load more to include older chats/),
+  ).toBeInTheDocument();
+  fireEvent.change(search, { target: { value: "unmatched topic" } });
+  expect(screen.getByText(/No matching titles/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+  expect(search).toHaveFocus();
+  expect(
+    screen.getByRole("link", { name: /Biology revision/ }),
+  ).toBeInTheDocument();
+  expect(field).toHaveValue("Keep my unfinished question");
+  expect(
+    fetcher.mock.calls.some((call) => pathOf(call[0]).endsWith("/messages")),
+  ).toBe(false);
+});

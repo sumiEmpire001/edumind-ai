@@ -108,3 +108,74 @@ it("keeps manual editing available when AI drafting is unavailable", async () =>
   ).toBeDisabled();
   expect(screen.getByLabelText("Section text")).toBeEnabled();
 });
+
+it("filters draft titles and preserves an unfinished document brief", async () => {
+  const original = request.getMockImplementation()!;
+  request.mockImplementation((path: string, init?: RequestInit) =>
+    path === "/documents" && !init?.method
+      ? [
+          { ...row, title: "Mechanics report" },
+          {
+            ...row,
+            id: "ec5f0920-e74e-4834-a7e4-217990c445d4",
+            title: "Biology report",
+          },
+        ]
+      : original(path, init),
+  );
+  setup();
+  await screen.findByRole("link", { name: /Mechanics report/ });
+  fireEvent.change(screen.getByLabelText("Document title"), {
+    target: { value: "My unfinished report" },
+  });
+  const search = screen.getByRole("searchbox", { name: "Search draft titles" });
+  fireEvent.change(search, { target: { value: " MECHANICS " } });
+  expect(
+    screen.queryByRole("link", { name: /Biology report/ }),
+  ).not.toBeInTheDocument();
+  fireEvent.change(search, { target: { value: "missing" } });
+  expect(screen.getByText(/No matching draft titles/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+  expect(search).toHaveFocus();
+  expect(
+    screen.getByRole("link", { name: /Biology report/ }),
+  ).toBeInTheDocument();
+  expect(screen.getByLabelText("Document title")).toHaveValue(
+    "My unfinished report",
+  );
+});
+
+it("distinguishes draft loading from an empty list and recovers without resetting the brief", async () => {
+  const original = request.getMockImplementation()!;
+  let rejectList: (cause: unknown) => void = () => {};
+  const loading = new Promise((_, reject) => {
+    rejectList = reject;
+  });
+  let attempts = 0;
+  request.mockImplementation((path: string, init?: RequestInit) => {
+    if (path === "/documents" && !init?.method)
+      return ++attempts === 1
+        ? loading
+        : [{ ...row, title: "Recovered report" }];
+    return original(path, init);
+  });
+  setup();
+  expect(screen.getByText("Loading your drafts…")).toBeInTheDocument();
+  expect(
+    screen.queryByText(/Your saved documents will appear here/),
+  ).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Document title"), {
+    target: { value: "Keep this title" },
+  });
+  rejectList(new Error("fixture unavailable"));
+  await screen.findByRole("alert");
+  expect(
+    screen.queryByText(/Your saved documents will appear here/),
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Retry drafts" }));
+  await screen.findByRole("link", { name: /Recovered report/ });
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(screen.getByLabelText("Document title")).toHaveValue(
+    "Keep this title",
+  );
+});

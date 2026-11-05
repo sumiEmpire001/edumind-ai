@@ -1,3 +1,4 @@
+import { SearchField } from "../components/SearchField";
 import { Icon } from "../components/Icon";
 import {
   useCallback,
@@ -78,6 +79,14 @@ export default function Chat() {
   selected.current = conversationId;
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [total, setTotal] = useState(0);
+  const [historyQuery, setHistoryQuery] = useState("");
+  const visibleConversations = conversations.filter((c) =>
+    c.title
+      .toLocaleLowerCase()
+      .includes(historyQuery.trim().toLocaleLowerCase()),
+  );
+  const [awayFromLatest, setAwayFromLatest] = useState(false);
+  const openedConversation = useRef<string | null>(null);
   const [listBusy, setListBusy] = useState(false);
   const [listError, setListError] = useState("");
   const listVersion = useRef(0);
@@ -238,9 +247,12 @@ export default function Chat() {
     return () => window.removeEventListener("focus", focus);
   }, [loadList, loadDetail]);
   useEffect(() => {
-    if (sending || pending)
-      bottom.current?.scrollIntoView?.({ block: "nearest" });
-  }, [data?.messages.length, sending, pending]);
+    if (!data || data.conversation.id !== conversationId) return;
+    if (openedConversation.current !== conversationId || sending || pending) {
+      bottom.current?.scrollIntoView?.({ block: "end" });
+      openedConversation.current = conversationId;
+    }
+  }, [conversationId, data, sending, pending]);
   async function createConversation() {
     if (createGuard.current) return;
     createGuard.current = true;
@@ -251,6 +263,7 @@ export default function Chat() {
       const c = await api.create(creationId.current);
       creationId.current = null;
       setHistoryOpen(false);
+      setHistoryQuery("");
       navigate(`/app/chat/${c.id}`);
       await loadList();
     } catch (cause) {
@@ -457,8 +470,18 @@ export default function Chat() {
             </button>
           </p>
         )}
+        <SearchField
+          label="Search conversation titles"
+          value={historyQuery}
+          onChange={setHistoryQuery}
+          hint={
+            conversations.length < total
+              ? "Searches the conversations shown here. Load more to include older chats."
+              : undefined
+          }
+        />
         <nav aria-label="Conversation history">
-          {conversations.map((c) => (
+          {visibleConversations.map((c) => (
             <Link
               key={c.id}
               to={`/app/chat/${c.id}`}
@@ -480,6 +503,14 @@ export default function Chat() {
             </Link>
           ))}
         </nav>
+        {!!historyQuery.trim() &&
+          !!conversations.length &&
+          !visibleConversations.length && (
+            <p className="history-empty" role="status">
+              No matching titles in these conversations. Try another title or
+              clear your search.
+            </p>
+          )}
         {!listBusy && !conversations.length && !listError && (
           <p className="history-empty">Your conversations will appear here.</p>
         )}
@@ -611,7 +642,17 @@ export default function Chat() {
             </button>
           </p>
         )}
-        <div className="chat-messages" aria-busy={loading}>
+        <div
+          className="chat-messages"
+          aria-busy={loading}
+          onScroll={(event) => {
+            const element = event.currentTarget;
+            setAwayFromLatest(
+              element.scrollHeight - element.scrollTop - element.clientHeight >
+                160,
+            );
+          }}
+        >
           {loading && !data && <p role="status">Loading this conversation…</p>}
           {!conversationId && (
             <div className="chat-empty">
@@ -772,6 +813,15 @@ export default function Chat() {
           )}
           <div ref={bottom} />
         </div>
+        {data && data.messages.length > 0 && awayFromLatest && (
+          <button
+            type="button"
+            className="jump-latest"
+            onClick={() => bottom.current?.scrollIntoView?.({ block: "end" })}
+          >
+            Jump to latest <Icon name="arrow" />
+          </button>
+        )}
         {data && (
           <form className="chat-composer" onSubmit={send}>
             <Attachments
