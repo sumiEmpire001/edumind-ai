@@ -421,6 +421,12 @@ export default function Studio() {
           >
             New document
           </Link>
+          {!documents.length && (
+            <p className="studio-empty-note">
+              Your saved documents will appear here. Start a new document to
+              create your first draft.
+            </p>
+          )}
           {documents.map((d) => (
             <Link
               key={d.id}
@@ -480,9 +486,9 @@ export default function Studio() {
                 </select>
               </label>
               <p className="field-hint">
-                A writing budget of about 350 words per target page. The
-                exported PDF reports its actual page count; no blank-page
-                padding.
+                Choose a target to guide your draft. The final PDF length
+                depends on your content and formatting; its actual page count is
+                shown after export.
               </p>
               <label>
                 Outline · one section heading per line

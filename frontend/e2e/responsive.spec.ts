@@ -25,6 +25,13 @@ test("workspace tools remain usable across responsive breakpoints", async ({
         ),
         `${route} overflows at ${width}px`,
       ).toBe(true);
+      if (route === "/app/chat" && width > 900) {
+        const history = await page.locator(".chat-history").boundingBox();
+        const panel = await page.locator(".chat-panel").boundingBox();
+        expect(history).not.toBeNull();
+        expect(panel).not.toBeNull();
+        expect(history!.x + history!.width).toBeLessThanOrEqual(panel!.x + 1);
+      }
       if (width === 390 || width === 1440) {
         await testInfo.attach(`${route.replaceAll("/", "-")}-${width}`, {
           body: await page.screenshot({ fullPage: true }),

@@ -572,6 +572,7 @@ button:disabled {
   flex-shrink: 0;
 }
 .chat-workspace {
+  display: grid;
   height: calc(100dvh - 72px);
   min-height: 540px;
   grid-template-columns: 216px minmax(0, 1fr);
@@ -1335,4 +1336,10 @@ button:disabled {
   .copy-button {
     min-height: 44px;
   }
+}
+.studio-empty-note {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--muted);
+  margin: 0;
 }
