@@ -7,6 +7,7 @@ test("workspace tools remain usable across responsive breakpoints", async ({
 }, testInfo) => {
   const email = await create(page);
   await login(page, email);
+  await expect(page).toHaveURL("/app");
   for (const width of [360, 390, 768, 920, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     for (const route of [
@@ -17,6 +18,7 @@ test("workspace tools remain usable across responsive breakpoints", async ({
       "/app/knowledge",
     ]) {
       await page.goto(route);
+      await expect(page).toHaveURL(route);
       await expect(page.locator("#main-content")).toBeVisible();
       await expect(page.getByRole("heading").first()).toBeVisible();
       expect(
@@ -33,9 +35,11 @@ test("workspace tools remain usable across responsive breakpoints", async ({
         expect(history!.x + history!.width).toBeLessThanOrEqual(panel!.x + 1);
       }
       if (width === 390 || width === 1440) {
-        await testInfo.attach(`${route.replaceAll("/", "-")}-${width}`, {
-          body: await page.screenshot({ fullPage: true }),
-          contentType: "image/png",
+        await page.screenshot({
+          fullPage: true,
+          path: testInfo.outputPath(
+            `ui${route.replaceAll("/", "-")}-${width}.png`,
+          ),
         });
       }
     }
@@ -64,6 +68,7 @@ test("question starters populate the composer without submitting", async ({
 }) => {
   const email = await create(page);
   await login(page, email);
+  await expect(page).toHaveURL("/app");
   await page.goto("/app/chat");
   await page.getByRole("button", { name: "Create a conversation" }).click();
   await page

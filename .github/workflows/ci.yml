@@ -124,7 +124,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: responsive-ui-screenshots
-          path: frontend/test-results/**/attachments/*.png
+          path: frontend/test-results/responsive-*/ui-*.png
           retention-days: 3
           if-no-files-found: ignore
       - name: Preserve browser failure diagnostics
