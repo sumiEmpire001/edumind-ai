@@ -135,6 +135,11 @@ test("finds saved chats and keeps the composer usable on short phone screens", a
     page.getByRole("heading", { name: "Mechanics revision", exact: true }),
   ).toBeVisible();
   await page.setViewportSize({ width: 390, height: 500 });
+  expect(
+    await page
+      .locator(".chat-actions")
+      .evaluate((element) => element.getBoundingClientRect().height),
+  ).toBeLessThan(140);
   for (let i = 1; i <= 2; i++) {
     await question.fill(`Explain forces and motion, example ${i}`);
     await page

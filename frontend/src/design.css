@@ -1467,3 +1467,13 @@ button:disabled {
     min-height: 64px;
   }
 }
+@media (max-width: 760px) {
+  .chat-heading .chat-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    max-width: none;
+    flex-basis: 100%;
+    justify-content: stretch;
+  }
+}
