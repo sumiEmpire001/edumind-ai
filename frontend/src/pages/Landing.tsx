@@ -1,3 +1,4 @@
+import { Icon } from "../components/Icon";
 import { Link } from "react-router-dom";
 import { PublicHeader } from "../components/PublicHeader";
 export function Landing() {
@@ -8,7 +9,7 @@ export function Landing() {
         <section className="hero page-width">
           <div className="hero-copy">
             <div className="launch-label">
-              <span aria-hidden="true" /> A fresh space for curious minds
+              <span aria-hidden="true" /> Your academic companion
             </div>
             <h1>
               Learn the why.
@@ -16,56 +17,59 @@ export function Landing() {
               <em>Go further.</em>
             </h1>
             <p className="hero-lead">
-              Big questions deserve a little clarity. Make room for deeper
-              understanding, one idea at a time.
+              Ask better questions. Build thoughtful documents. Bring your
+              learning together in one focused workspace.
             </p>
             <div className="hero-actions">
               <Link className="button" to="/register">
-                Create your account <span aria-hidden="true">↗</span>
+                Create your account <Icon name="arrow" />
               </Link>
               <Link className="text-link" to="/login">
                 I already have an account <span aria-hidden="true">→</span>
               </Link>
             </div>
             <p className="early-note">
-              Ask questions. Build understanding. Keep your conversations.
+              Study chat · Document Studio · PDF exports
             </p>
           </div>
-          <div className="study-visual" aria-label="Our learning philosophy">
+          <div
+            className="study-visual"
+            aria-label="How EduMind helps you learn"
+          >
             <div className="study-tab">
-              A moment of understanding <span aria-hidden="true">✦</span>
+              A workspace for your next idea <span aria-hidden="true">✦</span>
             </div>
             <div className="study-paper">
-              <span className="paper-label">THE EDUMIND WAY</span>
+              <span className="paper-label">LEARN. CREATE. REFINE.</span>
               <p className="paper-title">
-                A better answer starts
+                Good work starts
                 <br />
-                with a better <em>why.</em>
+                with a little <em>clarity.</em>
               </p>
               <div className="learning-step">
                 <span>01</span>
                 <div>
-                  <strong>Start with what you know</strong>
-                  <p>Give your curiosity a starting point.</p>
+                  <strong>Explore with study chat</strong>
+                  <p>Keep questions and follow-ups together.</p>
                 </div>
               </div>
               <div className="learning-step">
                 <span>02</span>
                 <div>
-                  <strong>Work through the steps</strong>
-                  <p>Make the complex feel approachable.</p>
+                  <strong>Create in Document Studio</strong>
+                  <p>Organize your ideas, one section at a time.</p>
                 </div>
               </div>
               <div className="learning-step">
                 <span>03</span>
                 <div>
-                  <strong>Make it make sense</strong>
-                  <p>Understanding stays with you.</p>
+                  <strong>Take your work with you</strong>
+                  <p>Review your draft and export it as a PDF.</p>
                 </div>
               </div>
               <div className="paper-bottom">
                 <span>Curiosity → Clarity</span>
-                <span aria-hidden="true">↗</span>
+                <Icon name="arrow" />
               </div>
             </div>
             <div className="visual-caption">
@@ -83,26 +87,26 @@ export function Landing() {
                 the whole point.
               </h2>
               <p>
-                We’re building an academic companion that teaches students, not
-                just answers questions.
+                From a difficult concept to a structured report, keep your
+                attention on the work that matters.
               </p>
             </div>
             <div className="principles">
               {[
                 [
                   "01",
-                  "Clarity over shortcuts",
-                  "An approach built around explanations, meaningful steps, and the reasoning behind the result.",
+                  "A conversation that stays with you",
+                  "Ask questions, attach an image or text note, and return to your saved conversations. AI availability depends on the service limits.",
                 ],
                 [
                   "02",
-                  "Curiosity across subjects",
-                  "A place designed for the questions that connect mathematics, science, programming, and more.",
+                  "Room for your bigger ideas",
+                  "Plan a document, edit its outline and develop each section at your own pace in Document Studio.",
                 ],
                 [
                   "03",
-                  "Knowledge with care",
-                  "Academic references will be reviewed before they become part of the learning experience.",
+                  "Ready to review and share",
+                  "Export answers and documents as PDFs. Always review the content, calculations and references before sharing.",
                 ],
               ].map(([n, t, d]) => (
                 <article key={n}>
@@ -123,7 +127,7 @@ export function Landing() {
             </h2>
           </div>
           <Link className="button" to="/register">
-            Find your space <span aria-hidden="true">↗</span>
+            Find your space <Icon name="arrow" />
           </Link>
         </section>
       </main>

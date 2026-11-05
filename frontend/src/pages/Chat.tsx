@@ -1,3 +1,4 @@
+import { Icon } from "../components/Icon";
 import {
   useCallback,
   useEffect,
@@ -630,7 +631,7 @@ export default function Chat() {
                 disabled={creating}
                 onClick={createConversation}
               >
-                Create a conversation <span aria-hidden="true">↗</span>
+                Create a conversation <Icon name="arrow" />
               </button>
             </div>
           )}
@@ -646,6 +647,32 @@ export default function Chat() {
                 Ask a question, include the values you know, and say what you’d
                 like to understand.
               </p>
+              <div
+                className="question-suggestions"
+                aria-label="Question starters"
+              >
+                {[
+                  ["Explain a concept", "Explain this concept step by step: "],
+                  [
+                    "Work through a problem",
+                    "Help me work through this problem, explaining each step: ",
+                  ],
+                  ["Make a study plan", "Help me create a study plan for "],
+                ].map(([label, question]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    disabled={!cap?.available || sending || pending}
+                    onClick={() => {
+                      setDraft(question);
+                      document.getElementById("academic-question")?.focus();
+                    }}
+                  >
+                    {label}
+                    <span aria-hidden="true"> →</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {data?.has_older && (
