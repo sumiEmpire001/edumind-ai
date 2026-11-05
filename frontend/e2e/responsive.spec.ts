@@ -74,10 +74,12 @@ test("question starters populate the composer without submitting", async ({
   await page
     .getByRole("button", { name: "Explain a concept", exact: true })
     .click();
-  await expect(page.getByLabel("Your question", { exact: true })).toHaveValue(
-    "Explain this concept step by step: ",
-  );
-  await expect(page.getByLabel("Your question", { exact: true })).toBeFocused();
+  await expect(
+    page.getByRole("textbox", { name: "Your question", exact: true }),
+  ).toHaveValue("Explain this concept step by step: ");
+  await expect(
+    page.getByRole("textbox", { name: "Your question", exact: true }),
+  ).toBeFocused();
   await expect(page.getByRole("article")).toHaveCount(0);
 });
 
@@ -94,16 +96,19 @@ test("finds saved chats and keeps the composer usable on short phone screens", a
       .getByRole("button", { name: "Create a conversation", exact: true })
       .click();
     await expect(
-      page.getByLabel("Your question", { exact: true }),
+      page.getByRole("textbox", { name: "Your question", exact: true }),
     ).toBeEnabled();
     await page.getByRole("button", { name: "Rename", exact: true }).click();
-    await page.getByLabel("Conversation title").fill(title);
+    await page.getByLabel("Conversation title", { exact: true }).fill(title);
     await page.getByRole("button", { name: "Save title", exact: true }).click();
     await expect(
       page.getByRole("heading", { name: title, exact: true }),
     ).toBeVisible();
   }
-  const question = page.getByLabel("Your question", { exact: true });
+  const question = page.getByRole("textbox", {
+    name: "Your question",
+    exact: true,
+  });
   await question.fill("Keep this unfinished question");
   const toggle = page.getByRole("button", { name: /^Conversations/ });
   if (await toggle.isVisible()) await toggle.click();
