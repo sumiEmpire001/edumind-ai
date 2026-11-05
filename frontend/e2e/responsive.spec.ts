@@ -74,9 +74,154 @@ test("question starters populate the composer without submitting", async ({
   await page
     .getByRole("button", { name: "Explain a concept", exact: true })
     .click();
-  await expect(page.getByLabel("Your question", { exact: true })).toHaveValue(
-    "Explain this concept step by step: ",
-  );
-  await expect(page.getByLabel("Your question", { exact: true })).toBeFocused();
+  await expect(
+    page.getByRole("textbox", { name: "Your question", exact: true }),
+  ).toHaveValue("Explain this concept step by step: ");
+  await expect(
+    page.getByRole("textbox", { name: "Your question", exact: true }),
+  ).toBeFocused();
   await expect(page.getByRole("article")).toHaveCount(0);
+});
+
+test("finds saved chats and keeps the composer usable on short phone screens", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(60000);
+  const email = await create(page);
+  await login(page, email);
+  await expect(page).toHaveURL("/app");
+  for (const title of ["Mechanics revision", "Biology revision"]) {
+    await page.goto("/app/chat");
+    await page
+      .getByRole("button", { name: "Create a conversation", exact: true })
+      .click();
+    await expect(
+      page.getByRole("textbox", { name: "Your question", exact: true }),
+    ).toBeEnabled();
+    await page.getByRole("button", { name: "Rename", exact: true }).click();
+    await page.getByLabel("Conversation title", { exact: true }).fill(title);
+    await page.getByRole("button", { name: "Save title", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: title, exact: true }),
+    ).toBeVisible();
+  }
+  const question = page.getByRole("textbox", {
+    name: "Your question",
+    exact: true,
+  });
+  await question.fill("Keep this unfinished question");
+  const toggle = page.getByRole("button", { name: /^Conversations/ });
+  if (await toggle.isVisible()) await toggle.click();
+  const search = page.getByRole("searchbox", {
+    name: "Search conversation titles",
+  });
+  const history = page.getByRole("navigation", {
+    name: "Conversation history",
+  });
+  await search.fill(" MECHANICS ");
+  await expect(
+    history.getByRole("link", { name: /Mechanics revision/ }),
+  ).toBeVisible();
+  await expect(
+    history.getByRole("link", { name: /Biology revision/ }),
+  ).toHaveCount(0);
+  await expect(question).toHaveValue("Keep this unfinished question");
+  await search.fill("No matching title");
+  await expect(page.getByText(/No matching titles/)).toBeVisible();
+  await page.getByRole("button", { name: "Clear search" }).click();
+  await expect(search).toBeFocused();
+  await history.getByRole("link", { name: /Mechanics revision/ }).click();
+  await expect(
+    page.getByRole("heading", { name: "Mechanics revision", exact: true }),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 500 });
+  expect(
+    await page
+      .locator(".chat-actions")
+      .evaluate((element) => element.getBoundingClientRect().height),
+  ).toBeLessThan(140);
+  for (let i = 1; i <= 2; i++) {
+    await question.fill(`Explain forces and motion, example ${i}`);
+    await page
+      .getByRole("button", { name: "Send question", exact: true })
+      .click();
+    await expect(
+      page.getByRole("article", { name: "EduMind response", exact: true }),
+    ).toHaveCount(i);
+    await expect(question).toHaveValue("");
+  }
+  const messages = page.locator(".chat-messages");
+  await messages.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await page.getByRole("button", { name: "Jump to latest" }).click();
+  await expect
+    .poll(() =>
+      messages.evaluate(
+        (element) =>
+          element.scrollHeight - element.clientHeight - element.scrollTop,
+      ),
+    )
+    .toBeLessThan(50);
+  await page.reload();
+  await expect(
+    page.getByRole("article", { name: "EduMind response", exact: true }),
+  ).toHaveCount(2);
+  await expect
+    .poll(() =>
+      messages.evaluate(
+        (element) =>
+          element.scrollHeight - element.clientHeight - element.scrollTop,
+      ),
+    )
+    .toBeLessThan(50);
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath("ui-chat-short-screen.png"),
+  });
+});
+
+test("finds saved documents without discarding unsaved section edits", async ({
+  page,
+}, testInfo) => {
+  const email = await create(page);
+  await login(page, email);
+  await expect(page).toHaveURL("/app");
+  for (const title of ["Mechanics report", "Biology report"]) {
+    await page.goto("/app/studio");
+    await page.getByLabel("Document title", { exact: true }).fill(title);
+    await page
+      .getByLabel("What should this report cover?", { exact: true })
+      .fill("Explain the topic with clear examples and a conclusion.");
+    await page
+      .getByRole("button", { name: "Create document", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/app\/studio\/[0-9a-f-]+$/);
+    await expect(
+      page.getByRole("heading", { name: title, exact: true }),
+    ).toBeVisible();
+  }
+  const section = page.getByLabel("Section text", { exact: true });
+  await section.fill("Keep this unsaved section text.");
+  const search = page.getByRole("searchbox", { name: "Search draft titles" });
+  await search.fill(" MECHANICS ");
+  await expect(
+    page.getByRole("link", { name: /Mechanics report/ }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: /Biology report/ })).toHaveCount(
+    0,
+  );
+  await expect(section).toHaveValue("Keep this unsaved section text.");
+  await search.fill("unknown title");
+  await expect(page.getByText(/No matching draft titles/)).toBeVisible();
+  await page.getByRole("button", { name: "Clear search" }).click();
+  await expect(search).toBeFocused();
+  await expect(
+    page.getByRole("link", { name: /Biology report/ }),
+  ).toBeVisible();
+  await expect(section).toHaveValue("Keep this unsaved section text.");
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath("ui-studio-draft-finder.png"),
+  });
 });

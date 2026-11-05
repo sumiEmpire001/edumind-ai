@@ -89,7 +89,9 @@ test("persists a formatted conversation, follows up, copies, renames and removes
     page.getByRole("article", { name: "EduMind response", exact: true }),
   ).toHaveCount(2);
   await page.getByRole("button", { name: "Rename", exact: true }).click();
-  await page.getByLabel("Conversation title").fill("My mechanics notes");
+  await page
+    .getByLabel("Conversation title", { exact: true })
+    .fill("My mechanics notes");
   await page.getByRole("button", { name: "Save title", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "My mechanics notes", exact: true }),
