@@ -33,10 +33,10 @@ class LearningExample(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     __table_args__ = (
-        # Preserve PostgreSQL's canonical parentheses/casts for Alembic comparison.
+        # Group the left concatenation like PostgreSQL index reflection.
         Index(
             "ix_learning_search",
-            text("to_tsvector('simple', (((question)::text || ' '::text) || answer))"),
+            text("to_tsvector('simple', (question::text || ' '::text) || answer)"),
             postgresql_using="gin",
         ).ddl_if(dialect="postgresql"),
         CheckConstraint("status IN ('pending','approved','rejected')", name="learning_status"),

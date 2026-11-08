@@ -105,3 +105,31 @@ it("allows retry after a backend failure", async () => {
   await screen.findByText("No questions here yet.");
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 });
+it("labels review decisions and requires verification before approval", async () => {
+  identity.role = "admin";
+  request.mockImplementation(async (path: string) =>
+    path.startsWith("/learning/examples")
+      ? [
+          {
+            id: "example-1",
+            question: "What is acceleration?",
+            answer: "",
+            evidence: "",
+            status: "pending",
+            split: "train",
+            reviewed: false,
+            updated_at: "2026-11-08T00:00:00Z",
+          },
+        ]
+      : null,
+  );
+  render(<Learning />);
+  const decision = await screen.findByRole("combobox", {
+    name: "Decision",
+    exact: true,
+  });
+  expect(decision).toHaveValue("approved");
+  expect(screen.getByLabelText("Verified answer")).toBeRequired();
+  fireEvent.change(decision, { target: { value: "rejected" } });
+  expect(screen.getByLabelText("Verified answer")).not.toBeRequired();
+});

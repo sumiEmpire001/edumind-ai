@@ -75,6 +75,7 @@ function ReviewForm({
         Dataset purpose
         <select
           name="split"
+          aria-label="Dataset purpose"
           defaultValue={example.split}
           disabled={example.reviewed}
         >
@@ -98,6 +99,7 @@ function ReviewForm({
         Decision
         <select
           name="decision"
+          aria-label="Decision"
           value={decision}
           onChange={(e) => setDecision(e.target.value)}
         >
