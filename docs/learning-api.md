@@ -93,6 +93,8 @@ not from collecting more documents.
 ## Deployment and verification
 
 1. Run full CI, including PostgreSQL/pgvector migrations and learning integration tests.
+   Readiness must track migration head. Backup rehearsal uses PostgreSQL 16 clients against
+   the PostgreSQL 16 server, rather than the runner’s changing default client version.
 2. Back up the database, then deploy backend migration `0007_learning` before the new frontend.
    The live Render service currently follows `phase-5/gemini` with auto-deploy off; merging main
    alone does not update it. Do not deploy only the frontend against the old API.

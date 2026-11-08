@@ -187,3 +187,11 @@ def test_input_limits_origin_and_no_automatic_collection(api):
         client.get("/api/v1/admin/learning/overview", headers=admin).json()["training_examples"]
         == 0
     )
+
+
+def test_readiness_revision_tracks_migration_head():
+    from alembic.script import ScriptDirectory
+
+    from app.database.session import SCHEMA_REVISION
+
+    assert SCHEMA_REVISION == ScriptDirectory("alembic").get_current_head()
