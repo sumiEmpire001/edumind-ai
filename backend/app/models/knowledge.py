@@ -14,6 +14,8 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Uuid,
+    func,
+    literal_column,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -85,6 +87,11 @@ class KnowledgeChunk(Base):
     embedding: Mapped[list] = mapped_column(Vector(768).with_variant(JSON, "sqlite"))
     __table_args__ = (
         UniqueConstraint("document_id", "version", "ordinal"),
+        Index(
+            "ix_knowledge_chunks_text",
+            func.to_tsvector(literal_column("'simple'"), content),
+            postgresql_using="gin",
+        ).ddl_if(dialect="postgresql"),
         Index(
             "ix_knowledge_chunks_vector",
             "embedding",

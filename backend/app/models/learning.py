@@ -3,7 +3,18 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text, Uuid
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    Uuid,
+    func,
+    literal_column,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -23,6 +34,11 @@ class LearningExample(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     __table_args__ = (
+        Index(
+            "ix_learning_search",
+            func.to_tsvector(literal_column("'simple'"), question + literal_column("' '") + answer),
+            postgresql_using="gin",
+        ).ddl_if(dialect="postgresql"),
         CheckConstraint("status IN ('pending','approved','rejected')", name="learning_status"),
         CheckConstraint("split IN ('train','evaluation')", name="learning_split"),
     )
