@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.config import Settings
 
-SCHEMA_REVISION = "0006_studio"
+SCHEMA_REVISION = "0007_learning"
 
 
 def build_engine(settings: Settings) -> Engine:

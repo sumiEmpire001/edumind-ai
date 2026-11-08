@@ -67,6 +67,9 @@ export function WorkspaceLayout() {
           <NavLink to="/app/knowledge" onClick={() => setOpen(false)}>
             <Icon name="book" /> Knowledge library
           </NavLink>
+          <NavLink to="/app/learning" onClick={() => setOpen(false)}>
+            <Icon name="book" /> Knowledge API
+          </NavLink>
           <NavLink to="/app/studio" onClick={() => setOpen(false)}>
             <Icon name="document" /> Document Studio
           </NavLink>
