@@ -12,8 +12,7 @@ from sqlalchemy import (
     String,
     Text,
     Uuid,
-    func,
-    literal_column,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -34,9 +33,10 @@ class LearningExample(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     __table_args__ = (
+        # Preserve PostgreSQL's canonical parentheses/casts for Alembic comparison.
         Index(
             "ix_learning_search",
-            func.to_tsvector(literal_column("'simple'"), question + literal_column("' '") + answer),
+            text("to_tsvector('simple', (((question)::text || ' '::text) || answer))"),
             postgresql_using="gin",
         ).ddl_if(dialect="postgresql"),
         CheckConstraint("status IN ('pending','approved','rejected')", name="learning_status"),
