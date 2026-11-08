@@ -126,7 +126,6 @@ it("labels review decisions and requires verification before approval", async ()
   render(<Learning />);
   const decision = await screen.findByRole("combobox", {
     name: "Decision",
-    exact: true,
   });
   expect(decision).toHaveValue("approved");
   expect(screen.getByLabelText("Verified answer")).toBeRequired();
