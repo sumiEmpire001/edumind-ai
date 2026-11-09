@@ -118,7 +118,7 @@
   display: grid;
 }
 
-.study-menu button,
+.study-menu :is(button, a),
 .study-message-tools button {
   min-height: 44px;
   background: #fff;
@@ -130,12 +130,14 @@
   padding: 8px 12px;
 }
 
-.study-menu button {
+.study-menu :is(button, a) {
   border-color: transparent;
   text-align: left;
+  align-content: center;
+  text-decoration: none;
 }
 
-.study-menu button:hover:not(:disabled),
+.study-menu :is(button, a):hover:not(:disabled),
 .study-message-tools button:hover:not(:disabled) {
   background: #edf5ef;
 }

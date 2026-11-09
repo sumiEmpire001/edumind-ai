@@ -44,7 +44,7 @@ class FormattingBoundary extends Component<
     );
   }
 }
-export function Markdown({ text }: { text: string }) {
+export function Markdown({ text, allowLinks = true }: { text: string; allowLinks?: boolean }) {
   return (
     <FormattingBoundary text={text}>
       <div className="answer-markdown">
@@ -77,7 +77,7 @@ export function Markdown({ text }: { text: string }) {
           ]}
           components={{
             a: ({ href, children }) =>
-              href ? (
+              allowLinks && href ? (
                 <a href={href} target="_blank" rel="noopener noreferrer">
                   {children}
                 </a>

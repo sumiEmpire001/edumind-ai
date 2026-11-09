@@ -226,11 +226,15 @@ it.each([
 ] as const)("uses the server role for $role access", async ({ role, heading }) => {
   setup(
     "/admin/login",
-    vi.fn().mockImplementation(async (input) =>
-      pathOf(input).endsWith("/login")
-        ? json({ ...bundle(), user: { ...user, role } })
-        : json({}, 401),
-    ),
+    vi.fn().mockImplementation(async (input) => {
+      const path = pathOf(input);
+      if (path.endsWith("/login")) return json({ ...bundle(), user: { ...user, role } });
+      if (path.endsWith("/admin/statistics"))
+        return json({ users: 9, submissions: 2, active_documents: 1 });
+      if (path.endsWith("/admin/learning/overview"))
+        return json({ training_examples: 7, searchable_chunks: 6, examples: { pending: 4 } });
+      return json({}, 401);
+    }),
   );
   fields();
   fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
@@ -238,4 +242,8 @@ it.each([
   expect(screen.queryAllByRole("link", { name: "Administration" })).toHaveLength(
     role === "admin" ? 1 : 0,
   );
+  if (role === "admin") {
+    expect(await screen.findByText("Registered users")).toBeInTheDocument();
+    expect(await screen.findByText("9")).toBeInTheDocument();
+  }
 });
