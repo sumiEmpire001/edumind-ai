@@ -1,0 +1,317 @@
+.chat-workspace.chat-compact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  background: #fff;
+}
+
+.chat-workspace.chat-compact.history-visible {
+  grid-template-columns: minmax(200px, 244px) minmax(0, 1fr);
+}
+
+.study-toolbar {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px clamp(12px, 2.5vw, 30px);
+  min-height: 64px;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+  position: relative;
+  z-index: 5;
+}
+
+.study-title {
+  min-width: 0;
+}
+
+.study-title p {
+  margin: 0 0 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.study-title h1 {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(18px, 2vw, 24px);
+  line-height: 1.25;
+  font-weight: 750;
+}
+
+.study-controls,
+.study-controls > button,
+.study-controls summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.study-controls {
+  flex-shrink: 0;
+}
+
+.study-controls > button,
+.study-controls summary {
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.study-controls .study-new {
+  border-color: var(--green);
+  color: #fff;
+  background: var(--green);
+}
+
+.study-controls > button[aria-expanded="true"],
+.study-tools[open] > summary {
+  background: #eaf3ed;
+}
+
+.study-controls svg {
+  width: 18px;
+  height: 18px;
+}
+
+.study-tools > summary > span:first-child,
+.study-new > span:first-child {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.study-tools {
+  position: relative;
+}
+
+.study-tools summary::-webkit-details-marker {
+  display: none;
+}
+
+.study-menu,
+.study-attachment-panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 10px 28px #163e3526;
+}
+
+.study-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(235px, calc(100vw - 24px));
+  padding: 5px;
+  display: grid;
+}
+
+.study-menu button,
+.study-message-tools button {
+  min-height: 44px;
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 12px;
+}
+
+.study-menu button {
+  border-color: transparent;
+  text-align: left;
+}
+
+.study-menu button:hover:not(:disabled),
+.study-message-tools button:hover:not(:disabled) {
+  background: #edf5ef;
+}
+
+.study-menu button.study-remove {
+  color: #9b2c2c;
+}
+
+.chat-compact .chat-history:not([hidden]) {
+  display: block;
+  position: static;
+  width: auto;
+  max-height: none;
+  min-height: 0;
+  box-shadow: none;
+  z-index: auto;
+}
+
+.chat-compact .chat-history[hidden] {
+  display: none;
+}
+
+.chat-compact .chat-history h2 {
+  font-size: 17px;
+  margin: 0 0 14px;
+}
+
+.chat-compact .chat-empty {
+  margin: clamp(20px, 5dvh, 56px) auto 16px;
+}
+
+.chat-compact .chat-empty h2 {
+  font-size: clamp(25px, 5vw, 38px);
+  letter-spacing: -0.035em;
+}
+
+.chat-compact .chat-empty > span {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  margin-bottom: 16px;
+}
+
+.chat-compact .chat-empty .button {
+  font-size: 15px;
+}
+
+.study-starters summary,
+.study-message-tools summary,
+.study-attachments > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 44px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--green);
+}
+
+.study-starters summary::after,
+.study-message-tools summary::after,
+.study-attachments > summary::after {
+  content: "⌄";
+}
+
+.study-starters[open] summary::after,
+.study-message-tools[open] summary::after,
+.study-attachments[open] > summary::after {
+  transform: rotate(180deg);
+}
+
+.study-message-tools {
+  margin-top: 4px;
+}
+
+.study-message-tools > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.chat-compact .message-meta {
+  margin-bottom: 8px;
+}
+
+.chat-compact .message-meta > strong {
+  font-size: 13px;
+}
+
+.chat-compact .chat-panel .chat-composer {
+  position: relative;
+  align-self: center;
+  width: min(860px, calc(100% - 24px));
+  margin: 0 12px 12px;
+  padding: 9px 12px;
+}
+
+.chat-compact .chat-composer label[for="academic-question"] {
+  margin: 0;
+  font-size: 14px;
+}
+
+.chat-compact .chat-composer textarea {
+  min-height: 60px;
+  padding-block: 6px;
+}
+
+.chat-compact .composer-bottom {
+  margin: 0;
+  padding: 0;
+  flex-wrap: wrap;
+}
+
+.chat-compact .composer-bottom .button {
+  min-height: 44px;
+  font-size: 14px;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.study-attachment-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 4;
+  max-height: min(38dvh, 320px);
+  overflow: auto;
+  padding: 10px;
+}
+
+.study-attachment-panel .chat-attachments {
+  margin: 0;
+}
+
+.study-limit {
+  margin-left: auto;
+}
+
+@media (max-width: 950px) {
+  .chat-workspace.chat-compact.history-visible {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  .chat-compact .chat-history:not([hidden]) {
+    max-height: 32dvh;
+    padding: 12px 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 520px) {
+  .study-toolbar {
+    gap: 8px;
+  }
+
+  .study-controls {
+    gap: 4px;
+  }
+
+  .study-new .study-control-label,
+  .study-tools .study-control-label {
+    display: none;
+  }
+
+  .chat-compact .chat-messages {
+    padding: 14px 12px;
+  }
+
+  .chat-compact .chat-composer .composer-bottom {
+    gap: 5px;
+  }
+}

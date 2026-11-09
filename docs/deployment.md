@@ -75,9 +75,9 @@ provider outage, failed jobs and backup restore. Record version and results.
 The deployed setup helper is off by default. Enter `INITIAL_ADMIN_SETUP=true`,
 `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_NAME` and a strong `INITIAL_ADMIN_PASSWORD` privately
 in the Render API service environment. Deploy once, confirm the generic success log,
-then remove all four setup values. The helper creates only the first administrator,
-never promotes an existing public account and never resets an existing administrator.
-Do not send the password in chat or commit it. See authentication.md for the private CLI alternative.
+then remove all four setup values. Create mode adds the first administrator.
+For an existing account, use the separate private promotion procedure in
+[authentication.md](authentication.md#promote-an-existing-account-from-render).
 
 ## Proposed document worker (requires purchase approval)
 
