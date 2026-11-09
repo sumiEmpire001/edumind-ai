@@ -522,7 +522,7 @@ button:disabled {
   background: #fcf2df;
   color: #997039;
 }
-.tool-card h3 {
+.tool-card :is(h2, h3) {
   font-size: 18px;
   margin-bottom: 10px;
 }
@@ -859,7 +859,7 @@ button:disabled {
   .tool-card {
     padding: 20px;
   }
-  .tool-card h3 {
+  .tool-card :is(h2, h3) {
     font-size: 17px;
   }
   .tool-card p {
@@ -1160,7 +1160,7 @@ button:disabled {
   .tool-card {
     padding: 22px;
   }
-  .tool-card h3 {
+  .tool-card :is(h2, h3) {
     font-size: 18px;
   }
   .tool-card p {

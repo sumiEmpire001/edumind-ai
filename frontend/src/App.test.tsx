@@ -212,3 +212,30 @@ it("renders unknown routes with a working home link", () => {
     "/",
   );
 });
+
+it("takes anonymous visitors to the dedicated administrator sign-in", async () => {
+  setup("/app/admin");
+  expect(
+    await screen.findByRole("heading", { name: "Administrator sign in" }),
+  ).toBeInTheDocument();
+});
+
+it.each([
+  { role: "student", heading: "Administrator access required" },
+  { role: "admin", heading: "Admin workspace" },
+] as const)("uses the server role for $role access", async ({ role, heading }) => {
+  setup(
+    "/admin/login",
+    vi.fn().mockImplementation(async (input) =>
+      pathOf(input).endsWith("/login")
+        ? json({ ...bundle(), user: { ...user, role } })
+        : json({}, 401),
+    ),
+  );
+  fields();
+  fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+  expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
+  expect(screen.queryAllByRole("link", { name: "Administration" })).toHaveLength(
+    role === "admin" ? 1 : 0,
+  );
+});

@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.auth.crypto import now
 from app.auth.dependencies import DB, Admin, Current, trusted_origin
-from app.knowledge.learning import question_digest, search, statistics
+from app.knowledge.learning import KnowledgeQueryTooBroad, question_digest, search, statistics
 from app.models.learning import LearningExample, LearningQuery
 from app.schemas.identity import InputModel
 from app.security.rate_limit import consume
@@ -119,7 +119,17 @@ def review(eid: UUID, data: Review, request: Request, db: DB, admin: Admin):
 def query(data: Question, request: Request, db: DB, current: Current):
     consume(request, "learning-query", str(current.user.id), 30, 60)
     started = time.perf_counter()
-    sources = search(db, data.question)
+    try:
+        sources = search(db, data.question)
+    except KnowledgeQueryTooBroad:
+        return {
+            "mode": "extractive_search",
+            "uses_gemini": False,
+            "status": "refine_query",
+            "sources": [],
+            "duration_ms": max(0, round((time.perf_counter() - started) * 1000)),
+            "message": "Too many matching sources. Add a specific term, topic, or course name.",
+        }
     elapsed = max(0, round((time.perf_counter() - started) * 1000))
     # No raw query text, user ID, attachments or private conversation content in telemetry.
     db.add(LearningQuery(duration_ms=elapsed, source_count=len(sources), created_at=now()))
