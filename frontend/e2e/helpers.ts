@@ -28,7 +28,13 @@ export async function login(page: Page, email: string, value = pass) {
 }
 export async function menu(page: Page) {
   const toggle = page.getByRole("button", { name: /^Menu/ });
-  if (await toggle.isVisible()) await toggle.click();
+  const nav = page.getByRole("navigation", { name: "Workspace navigation" });
+  await expect(toggle.or(nav).filter({ visible: true }).first()).toBeVisible();
+  if (await toggle.isVisible()) {
+    if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  }
+  await expect(nav).toBeVisible();
 }
 export async function signout(page: Page) {
   await menu(page);

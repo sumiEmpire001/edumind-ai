@@ -32,7 +32,15 @@ test("admin opens a readable dashboard and researches a LAUTECH question", async
 
 test("research stays unavailable when the deployment disables grounding", async ({ page }) => {
   await login(page, "admin-e2e@example.com");
+  await expect(page).toHaveURL(/\/app$/);
+  const availability = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === "/api/v1/research" &&
+    response.request().method() === "GET"
+  );
   await page.goto("/app/research?topic=lautech");
+  const response = await availability;
+  expect(response.status()).toBe(200);
+  expect(await response.json()).toEqual({ enabled: false });
   await expect(page.getByRole("status").filter({ hasText: "Live search is disabled" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Search the web" })).toBeDisabled();
   await expect(page.getByRole("link", { name: "Search reviewed answers in the Knowledge API" }))
