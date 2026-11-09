@@ -100,6 +100,14 @@ role-aware knowledge-library pages. Gemini is available only when the backend ke
 configured; uploads report unavailable until private storage is configured.
 Only `VITE_API_BASE_URL` is public configuration; never put secrets in Vite variables.
 
+## Live web research
+
+Study Chat defaults to Gemini 3.5 Flash-Lite. For free-tier use, keep the
+Gemini project on the Free tier and leave `WEB_RESEARCH_ENABLED=false`.
+The Knowledge API can still search approved answers without a generation call.
+Enable `WEB_RESEARCH_ENABLED` only on a deployment configured for Google Search
+grounding. Google bills grounding separately from model input and output.
+
 ## Verification
 
 From `backend` with the virtual environment activated:

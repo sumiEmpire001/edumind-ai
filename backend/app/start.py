@@ -39,6 +39,8 @@ def main():
         from google import genai
         from google.genai import errors, types
 
+        from app.core.config import DEFAULT_GEMINI_MODEL, get_settings
+
         key = os.environ.get("GEMINI_API_KEY", "")
         client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=10000))
         try:
@@ -49,13 +51,12 @@ def main():
             ]
             logging.warning("gemini_available_models=%s", models[:35])
             response = client.models.generate_content(
-                model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+                model=os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL),
                 contents="What is 2 + 2? Reply briefly.",
             )
             logging.warning("gemini_generation_check nonempty=%s", bool(response.text))
             from app.ai.gemini import GeminiProvider
             from app.ai.provider import AcademicError, Turn
-            from app.core.config import get_settings
 
             async def probe():
                 provider = GeminiProvider(get_settings())

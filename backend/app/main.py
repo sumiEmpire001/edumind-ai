@@ -19,6 +19,7 @@ from app.api.health import router
 from app.api.inbox import router as inbox_router
 from app.api.knowledge import router as knowledge_router
 from app.api.learning import router as learning_router
+from app.api.research import router as research_router
 from app.api.users import router as users_router
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
@@ -63,6 +64,12 @@ def create_app(
     app.include_router(attachments_router)
     app.include_router(documents_router)
     app.state.academic_provider = provider or build_provider(config)
+    # Keep web research separate from retrieval so it receives only the submitted question.
+    app.state.research = (
+        getattr(app.state.academic_provider, "research", None)
+        if config.web_research_enabled
+        else None
+    )
     app.add_middleware(BodyLimitMiddleware, limit=config.max_request_bytes)
     app.add_middleware(
         CORSMiddleware,
@@ -122,5 +129,6 @@ def create_app(
     app.include_router(chat_router)
     app.include_router(knowledge_router)
     app.include_router(learning_router)
+    app.include_router(research_router)
     app.include_router(inbox_router)
     return app

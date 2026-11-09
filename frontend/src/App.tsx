@@ -10,6 +10,7 @@ import { Overview } from "./pages/Overview";
 import { Account } from "./pages/Account";
 import { AdminWorkspace } from "./pages/AdminWorkspace";
 import { RouteBoundary } from "./components/RouteBoundary";
+const Research = lazy(() => import("./pages/Research"));
 const Learning = lazy(() => import("./pages/Learning"));
 const Knowledge = lazy(() => import("./pages/Knowledge"));
 const Chat = lazy(() => import("./pages/Chat"));
@@ -46,6 +47,7 @@ function RouteEffects() {
       "/app/account": "My account",
       "/app/knowledge": "Knowledge library",
       "/app/learning": "Knowledge API",
+      "/app/research": "Web research",
       "/app/studio": "Document Studio",
     };
     document.title = `${titles[pathname] || (pathname.startsWith("/app/chat") ? "Study chat" : pathname.startsWith("/app/studio/") ? "Document Studio" : "Page not found")} · EduMind AI`;
@@ -98,6 +100,14 @@ export default function App({ client }: { client?: SessionClient }) {
             />
             <Route path="account" element={<Account />} />
             <Route path="admin" element={<AdminWorkspace />} />
+            <Route
+              path="research"
+              element={
+                <Suspense fallback={<p role="status">Opening web research…</p>}>
+                  <Research />
+                </Suspense>
+              }
+            />
             <Route
               path="studio"
               element={
