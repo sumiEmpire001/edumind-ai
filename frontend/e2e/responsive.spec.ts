@@ -28,12 +28,23 @@ test("workspace tools remain usable across responsive breakpoints", async ({
         ),
         `${route} overflows at ${width}px`,
       ).toBe(true);
-      if (route === "/app/chat" && width > 900) {
+      if (route === "/app/chat") {
+        const toggle = page.getByRole("button", { name: "Conversations" });
+        await expect(page.locator(".chat-history")).toBeHidden();
+        await toggle.click();
         const history = await page.locator(".chat-history").boundingBox();
         const panel = await page.locator(".chat-panel").boundingBox();
         expect(history).not.toBeNull();
         expect(panel).not.toBeNull();
-        expect(history!.x + history!.width).toBeLessThanOrEqual(panel!.x + 1);
+        if (width > 950) {
+          expect(history!.x + history!.width).toBeLessThanOrEqual(panel!.x + 1);
+        } else {
+          expect(history!.y + history!.height).toBeLessThanOrEqual(
+            panel!.y + 1,
+          );
+        }
+        await toggle.click();
+        await expect(page.locator(".chat-history")).toBeHidden();
       }
       if (width === 390 || width === 1440) {
         await page.screenshot({
@@ -72,6 +83,7 @@ test("question starters populate the composer without submitting", async ({
   await expect(page).toHaveURL("/app");
   await page.goto("/app/chat");
   await page.getByRole("button", { name: "Create a conversation" }).click();
+  await page.getByText("Question starters", { exact: true }).click();
   await page
     .getByRole("button", { name: "Explain a concept", exact: true })
     .click();
@@ -99,6 +111,7 @@ test("finds saved chats and keeps the composer usable on short phone screens", a
     await expect(
       page.getByRole("textbox", { name: "Your question", exact: true }),
     ).toBeEnabled();
+    await page.getByLabel("Chat options", { exact: true }).click();
     await page.getByRole("button", { name: "Rename", exact: true }).click();
     await page.getByLabel("Conversation title", { exact: true }).fill(title);
     await page.getByRole("button", { name: "Save title", exact: true }).click();
@@ -138,9 +151,9 @@ test("finds saved chats and keeps the composer usable on short phone screens", a
   await page.setViewportSize({ width: 390, height: 500 });
   expect(
     await page
-      .locator(".chat-actions")
+      .locator(".study-toolbar")
       .evaluate((element) => element.getBoundingClientRect().height),
-  ).toBeLessThan(140);
+  ).toBeLessThan(90);
   for (let i = 1; i <= 2; i++) {
     await question.fill(`Explain forces and motion, example ${i}`);
     await page

@@ -68,6 +68,7 @@ test("persists a formatted conversation, follows up, copies, renames and removes
     await context.grantPermissions(["clipboard-read", "clipboard-write"], {
       origin,
     });
+  await answer.getByText("Answer actions", { exact: true }).click();
   await answer.getByRole("button", { name: "Copy answer" }).click();
   if (browserName === "chromium") {
     await expect(answer.getByText("Copied", { exact: true })).toBeVisible();
@@ -88,6 +89,7 @@ test("persists a formatted conversation, follows up, copies, renames and removes
   await expect(
     page.getByRole("article", { name: "EduMind response", exact: true }),
   ).toHaveCount(2);
+  await page.getByLabel("Chat options", { exact: true }).click();
   await page.getByRole("button", { name: "Rename", exact: true }).click();
   await page
     .getByLabel("Conversation title", { exact: true })
@@ -109,6 +111,7 @@ test("persists a formatted conversation, follows up, copies, renames and removes
   );
   expect(overflow).toBe(false);
   page.once("dialog", (dialog) => dialog.accept());
+  await page.getByLabel("Chat options", { exact: true }).click();
   await page.getByRole("button", { name: "Remove", exact: true }).click();
   await expect(page).toHaveURL("/app/chat");
   await expect(

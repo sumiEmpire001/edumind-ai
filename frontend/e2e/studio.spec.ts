@@ -78,6 +78,7 @@ test("attaches an image to chat and downloads the answer PDF", async ({
   await page.goto("/app/chat");
   await page.getByRole("button", { name: /Create a conversation/ }).click();
   await expect(page).toHaveURL(/\/app\/chat\/[0-9a-f-]+$/);
+  await page.getByLabel("Attach files", { exact: true }).click();
   const upload = page.getByLabel("Attach an image or text note", {
     exact: true,
   });
@@ -102,6 +103,7 @@ test("attaches an image to chat and downloads the answer PDF", async ({
       .getByRole("article", { name: "Your question" })
       .getByText("exercise.png", { exact: true }),
   ).toBeVisible();
+  await page.getByText("Answer actions", { exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Download answer PDF", exact: true }),
   ).toBeVisible();
