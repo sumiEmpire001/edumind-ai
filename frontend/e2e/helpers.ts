@@ -28,7 +28,7 @@ export async function login(page: Page, email: string, value = pass) {
 }
 export async function menu(page: Page) {
   const toggle = page.getByRole("button", { name: /^Menu/ });
-  const nav = page.getByRole("navigation", { name: "Workspace navigation" });
+  const nav = page.getByRole("navigation", { name: /^(Workspace|Main) navigation$/ });
   await expect(toggle.or(nav).filter({ visible: true }).first()).toBeVisible();
   if (await toggle.isVisible()) {
     if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
