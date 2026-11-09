@@ -92,3 +92,37 @@ def test_cancel():
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(p.generate([Turn("user", "question")]))
     assert p.client.aio.models.generate_content.call_count == 1
+
+
+def test_research_returns_only_provider_grounded_links():
+    response = reply("Current answer")
+    response.candidates[0].grounding_metadata = types.GroundingMetadata(
+        grounding_chunks=[
+            types.GroundingChunk(web=types.GroundingChunkWeb(title="Example", uri=url))
+            for url in [
+                "https://example.org/evidence",
+                "https://example.org/evidence",
+                "javascript:alert(1)",
+                "https://someone@example.org/unsafe",
+            ]
+        ],
+        search_entry_point=types.SearchEntryPoint(
+            rendered_content='<a href="https://www.google.com/search?q=example">Look up</a>'
+            '<a href="https://untrusted.example/search">Other link</a>'
+        ),
+    )
+    p = provider([response])
+    result = asyncio.run(p.research("What is current?"))
+    assert result.answer == "Current answer"
+    assert [source.url for source in result.sources] == ["https://example.org/evidence"]
+    assert [link.title for link in result.suggestions] == ["Look up"]
+    args = p.client.aio.models.generate_content.call_args.kwargs
+    assert args["config"].tools[0].google_search is not None
+    assert len(args["contents"]) == 1
+
+
+def test_research_fails_closed_when_gemini_skips_grounding():
+    response = reply("Unverified answer")
+    response.candidates[0].grounding_metadata = None
+    with pytest.raises(AcademicError, match="no_web_sources"):
+        asyncio.run(provider([response]).research("What is current?"))

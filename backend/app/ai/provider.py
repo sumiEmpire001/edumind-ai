@@ -20,7 +20,14 @@ class AcademicError(Exception):
         self.code = (
             code
             if code
-            in {"unavailable", "timeout", "empty_response", "rate_limited", "provider_failure"}
+            in {
+                "unavailable",
+                "timeout",
+                "empty_response",
+                "rate_limited",
+                "provider_failure",
+                "no_web_sources",
+            }
             else "provider_failure"
         )
         super().__init__(self.code)
