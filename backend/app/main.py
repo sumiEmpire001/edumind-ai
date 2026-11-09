@@ -9,8 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.ai.gemini import build_provider
 from app.ai.provider import AcademicProvider
+from app.ai.routing import build_provider
 from app.api.attachments import router as attachments_router
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router

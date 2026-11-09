@@ -157,3 +157,18 @@ Use feature branches and pull requests, and require backend, frontend, browser a
 Linux/Windows inbox checks. Do not commit `.env`, uploads, databases, tokens, or private
 academic materials. The hosted frontend currently uses a source snapshot; GitHub remains
 the canonical source. Automatic Vercel Git integration is a remaining setup task.
+
+## Optional backup and tutor benchmark
+
+Gemini remains the primary provider. To enable the OpenAI text backup, configure
+`OPENAI_BACKUP_API_KEY` in the backend environment after reviewing data handling
+and billing. `OPENAI_BACKUP_MODEL` selects the backup model. Eligible text context
+can include conversation history and approved reference excerpts. Image turns
+stay with Gemini. With backup enabled, eligible requests reserve the last 40% of
+the provider time budget for fallback on a Gemini timeout or quota error.
+
+From `backend`, run `python -m scripts.benchmark_models gemini` and
+`python -m scripts.benchmark_models openai` with the respective keys configured.
+Each command makes four live requests using synthetic prompts and outputs JSON
+with answers, timings, errors and rubrics for human review. These prompts provide
+a baseline for tutor behavior, separate from hosted load testing and live research.
