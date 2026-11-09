@@ -30,7 +30,11 @@ export function SessionGate() {
     );
   if (auth.status === "anonymous")
     return (
-      <Navigate to="/login" replace state={{ returnTo: location.pathname }} />
+      <Navigate
+        to={/^\/app\/admin\/?$/i.test(location.pathname) ? "/admin/login" : "/login"}
+        replace
+        state={{ returnTo: location.pathname }}
+      />
     );
   return <Outlet />;
 }

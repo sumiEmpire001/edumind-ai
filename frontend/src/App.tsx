@@ -8,6 +8,7 @@ import { Landing } from "./pages/Landing";
 import { AuthPage } from "./pages/AuthPage";
 import { Overview } from "./pages/Overview";
 import { Account } from "./pages/Account";
+import { AdminWorkspace } from "./pages/AdminWorkspace";
 import { RouteBoundary } from "./components/RouteBoundary";
 const Learning = lazy(() => import("./pages/Learning"));
 const Knowledge = lazy(() => import("./pages/Knowledge"));
@@ -38,6 +39,8 @@ function RouteEffects() {
     const titles: Record<string, string> = {
       "/": "A clearer way to learn",
       "/login": "Sign in",
+      "/admin/login": "Administrator sign in",
+      "/app/admin": "Administration",
       "/register": "Create an account",
       "/app": "Your workspace",
       "/app/account": "My account",
@@ -68,6 +71,10 @@ export default function App({ client }: { client?: SessionClient }) {
           element={<AuthPage key="register" mode="register" />}
         />
         <Route path="/login" element={<AuthPage key="login" mode="login" />} />
+        <Route
+          path="/admin/login"
+          element={<AuthPage key="admin-login" mode="login" admin />}
+        />
         <Route element={<SessionGate />}>
           <Route path="/app" element={<WorkspaceLayout />}>
             <Route index element={<Overview />} />
@@ -90,6 +97,7 @@ export default function App({ client }: { client?: SessionClient }) {
               }
             />
             <Route path="account" element={<Account />} />
+            <Route path="admin" element={<AdminWorkspace />} />
             <Route
               path="studio"
               element={

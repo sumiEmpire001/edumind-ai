@@ -179,9 +179,22 @@ Render backend environment (never in ChatGPT messages, GitHub or the frontend):
 - INITIAL_ADMIN_NAME=your preferred administrator name
 - INITIAL_ADMIN_PASSWORD=a private 15–128 character password
 
-Deploy once. Startup serializes bootstrap under the same PostgreSQL advisory lock as the
-private CLI. It creates an administrator only if no administrator exists. Existing public
-accounts are not promoted, existing admin passwords are never overwritten, and no setup
-values are logged. After the generic `initial_administrator_created` event, remove/clear all
-four setup values and deploy again. Then sign in normally through the frontend. Leave this
-feature disabled otherwise. Additional administrators require the existing private CLI.
+Deploy once. Startup serializes setup under the same PostgreSQL advisory lock as the
+private CLI. Create mode adds the first administrator. After the generic
+`initial_administrator_created` event, remove the setup variables and redeploy.
+
+## Promote an existing account from Render
+
+A Render service operator can explicitly grant administrator access to an existing
+account. In the private API service environment, set these temporary values:
+
+- `INITIAL_ADMIN_SETUP=promote`
+- `INITIAL_ADMIN_EMAIL` to the existing account email
+- `INITIAL_ADMIN_PASSWORD` to that account's current password
+
+Save and deploy. Startup verifies the password against the existing account, changes
+its role, revokes its sessions, and records the promotion in the audit log in one
+transaction. The account keeps its ID, password, and learning history. An invalid
+password or inactive account leaves the role unchanged and logs a generic outcome.
+Remove the setup variables after `administrator_promotion_applied` and redeploy.
+Then sign in again at `/admin/login`. Enter setup values only in Render.

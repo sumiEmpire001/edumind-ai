@@ -76,6 +76,11 @@ export function WorkspaceLayout() {
           <NavLink to="/app/account" onClick={() => setOpen(false)}>
             <Icon name="user" /> My account
           </NavLink>
+          {user.role === "admin" && (
+            <NavLink to="/app/admin" onClick={() => setOpen(false)}>
+              <Icon name="user" /> Administration
+            </NavLink>
+          )}
         </nav>
         <div className="sidebar-bottom">
           <div className="user-chip">

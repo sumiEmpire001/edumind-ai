@@ -11,6 +11,12 @@ from app.auth.crypto import now
 from app.models.knowledge import KnowledgeChunk, KnowledgeDocument, KnowledgeSubmission
 from app.models.learning import LearningExample, LearningQuery
 
+MAX_RANKED_MATCHES = 10_000
+
+
+class KnowledgeQueryTooBroad(Exception):
+    pass
+
 
 def canonical(question):
     return " ".join(unicodedata.normalize("NFKC", question).casefold().split())
@@ -25,11 +31,18 @@ def ranked(db, query, expression, question, tie_breaker):
         config = literal_column("'simple'")
         vector = func.to_tsvector(config, expression)
         terms = func.plainto_tsquery(config, question)
+        matching = query.where(vector.op("@@")(terms))
+        # Ranking computes a score for every match. Check the bound without sorting.
+        overflow = (
+            matching.with_only_columns(literal_column("1"), maintain_column_froms=True)
+            .offset(MAX_RANKED_MATCHES)
+            .limit(1)
+        )
+        if db.scalar(overflow) is not None:
+            raise KnowledgeQueryTooBroad
         return list(
             db.execute(
-                query.where(vector.op("@@")(terms))
-                .order_by(func.ts_rank_cd(vector, terms).desc(), tie_breaker)
-                .limit(5)
+                matching.order_by(func.ts_rank_cd(vector, terms).desc(), tie_breaker).limit(5)
             )
         )
     # SQLite is only used in isolated tests. Production uses indexed PostgreSQL FTS.

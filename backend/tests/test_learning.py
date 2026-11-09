@@ -1,9 +1,11 @@
 import hashlib
 from uuid import UUID
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.knowledge import learning
 from app.knowledge.worker import run_one
 from app.models.identity import User
 from app.models.learning import LearningQuery
@@ -195,3 +197,25 @@ def test_readiness_revision_tracks_migration_head():
     from app.database.session import SCHEMA_REVISION
 
     assert SCHEMA_REVISION == ScriptDirectory("alembic").get_current_head()
+
+
+@pytest.mark.integration
+def test_search_requests_more_specific_terms_before_ranking_broad_matches(api, monkeypatch):
+    client, engine, student, admin = actors(api)
+    if engine.dialect.name != "postgresql":
+        pytest.skip("PostgreSQL full-text search required")
+    monkeypatch.setattr(learning, "MAX_RANKED_MATCHES", 1)
+    for question in ("How do we calculate acceleration?", "When is acceleration constant?"):
+        eid = propose(client, student, question).json()["id"]
+        assert review(client, admin, eid).status_code == 200
+    broad = client.post(
+        "/api/v1/learning/query", headers=student, json={"question": "acceleration"}
+    )
+    assert broad.status_code == 200
+    assert broad.json()["status"] == "refine_query"
+    assert broad.json()["sources"] == []
+    narrow = client.post(
+        "/api/v1/learning/query", headers=student, json={"question": "constant acceleration"}
+    ).json()
+    assert narrow["status"] == "sources_found"
+    assert len(narrow["sources"]) == 1

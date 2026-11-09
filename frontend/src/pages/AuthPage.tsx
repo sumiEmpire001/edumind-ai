@@ -6,7 +6,13 @@ import { errorMessage } from "../api/client";
 import { PublicHeader } from "../components/PublicHeader";
 import { PasswordField } from "../components/PasswordField";
 
-export function AuthPage({ mode }: { mode: "login" | "register" }) {
+export function AuthPage({
+  mode,
+  admin = false,
+}: {
+  mode: "login" | "register";
+  admin?: boolean;
+}) {
   const registering = mode === "register";
   const auth = useAuth();
   const location = useLocation();
@@ -25,11 +31,12 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const [error, setError] = useState("");
   const [fields, setFields] = useState<Record<string, string>>({});
   const returnTo = routeState?.returnTo || "";
-  const destination =
+  const learnerDestination =
     ["/app/account", "/app/chat"].includes(returnTo) ||
     /^\/app\/chat\/[0-9a-f-]{36}$/i.test(returnTo)
       ? returnTo
       : "/app";
+  const destination = admin ? "/app/admin" : learnerDestination;
   if (auth.status === "authenticated")
     return <Navigate to={destination} replace />;
   async function submit(event: FormEvent) {
@@ -81,9 +88,15 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
       <PublicHeader />
       <main id="main-content" tabIndex={-1} className="auth-layout page-width">
         <aside className="auth-aside">
-          <p className="eyebrow">Your space to grow</p>
+          <p className="eyebrow">
+            {admin ? "EduMind administration" : "Your space to grow"}
+          </p>
           <h1>
-            {registering ? (
+            {admin ? (
+              <>
+                Manage your <em>workspace.</em>
+              </>
+            ) : registering ? (
               <>
                 A curious mind.
                 <br />A fresh <em>start.</em>
@@ -97,9 +110,11 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
             )}
           </h1>
           <p>
-            {registering
-              ? "Create an account and make room for your next moment of understanding."
-              : "Pick up where curiosity left off. Your personal workspace is right here."}
+            {admin
+              ? "Review contributed resources and monitor the EduMind Knowledge API."
+              : registering
+                ? "Create an account and make room for your next moment of understanding."
+                : "Pick up where curiosity left off. Your personal workspace is right here."}
           </p>
           <div className="auth-quote">
             <span aria-hidden="true">✦</span>
@@ -112,15 +127,25 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
         </aside>
         <section className="auth-card" aria-labelledby="form-title">
           <p className="eyebrow">
-            {registering ? "A new beginning" : "Good to see you"}
+            {admin
+              ? "Restricted access"
+              : registering
+                ? "A new beginning"
+                : "Good to see you"}
           </p>
           <h2 id="form-title">
-            {registering ? "Create your account" : "Sign in"}
+            {admin
+              ? "Administrator sign in"
+              : registering
+                ? "Create your account"
+                : "Sign in"}
           </h2>
           <p className="form-intro">
-            {registering
-              ? "Start with a few details about you."
-              : "Enter your details to continue."}
+            {admin
+              ? "Enter the email and password of your administrator account."
+              : registering
+                ? "Start with a few details about you."
+                : "Enter your details to continue."}
           </p>
           {routeState?.notice && !registering && (
             <p className="notice" role="status">
@@ -215,12 +240,18 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
               </button>
             </fieldset>
           </form>
-          <p className="form-switch">
-            {registering ? "Already have an account? " : "New to EduMind? "}
-            <Link to={registering ? "/login" : "/register"}>
-              {registering ? "Sign in" : "Create an account"}
-            </Link>
-          </p>
+          {admin ? (
+            <p className="form-switch">
+              <Link to="/login">Back to student sign in</Link>
+            </p>
+          ) : (
+            <p className="form-switch">
+              {registering ? "Already have an account? " : "New to EduMind? "}
+              <Link to={registering ? "/login" : "/register"}>
+                {registering ? "Sign in" : "Create an account"}
+              </Link>
+            </p>
+          )}
         </section>
       </main>
     </>
