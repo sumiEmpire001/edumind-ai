@@ -1,27 +1,37 @@
-"""Rollback release entrypoint. Use the existing database schema without migrating it."""
+"""Single-instance test deployment entrypoint; production uses a release migration job."""
 
 import asyncio
 import logging
 import os
 import re
 
+from alembic.config import Config
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.core.config import get_settings
-from app.database.session import build_engine, check_database
+from alembic import command
 
 
 def main():
-    engine = build_engine(get_settings())
-    try:
-        if not check_database(engine):
-            logging.error("rollback_database_schema_incompatible")
-            raise SystemExit(1)
-    except SQLAlchemyError as exc:
-        logging.error("rollback_database_check_failed category=%s", type(exc).__name__)
-        raise SystemExit(1) from None
-    finally:
-        engine.dispose()
+    if os.environ.get("RUN_DATABASE_MIGRATIONS") == "true":
+        try:
+            command.upgrade(Config("alembic.ini"), "head")
+        except SQLAlchemyError as exc:
+            message = str(exc).lower()
+            category = "database_error"
+            for needle, label in [
+                ("root certificate file", "missing_ca_certificate"),
+                ("certificate verify failed", "certificate_verification_failed"),
+                ("does not match host name", "certificate_hostname_mismatch"),
+                ("does not support ssl", "database_ssl_unsupported"),
+                ("password authentication failed", "database_credentials_invalid"),
+                ("could not translate host", "database_hostname_invalid"),
+                ("connection timed out", "database_connection_timeout"),
+            ]:
+                if needle in message:
+                    category = label
+                    break
+            logging.error("migration_failed category=%s", category)
+            raise SystemExit(1) from None
     from app.auth.initial_admin import initialize
 
     initialize()
@@ -45,6 +55,7 @@ def main():
             logging.warning("gemini_generation_check nonempty=%s", bool(response.text))
             from app.ai.gemini import GeminiProvider
             from app.ai.provider import AcademicError, Turn
+            from app.core.config import get_settings
 
             async def probe():
                 provider = GeminiProvider(get_settings())

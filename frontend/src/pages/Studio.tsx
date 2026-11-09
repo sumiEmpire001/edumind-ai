@@ -11,6 +11,7 @@ import { ApiError, errorMessage } from "../api/client";
 import { Markdown } from "../chat/Markdown";
 import { downloadPdf } from "../studio/download";
 import "./Studio.css";
+import { SearchField } from "../components/SearchField";
 
 type Section = {
   title: string;
@@ -138,6 +139,12 @@ export default function Studio() {
   const selected = useRef(documentId);
   selected.current = documentId;
   const [documents, setDocuments] = useState<Draft[]>([]);
+  const [draftQuery, setDraftQuery] = useState("");
+  const [listBusy, setListBusy] = useState(true);
+  const [listError, setListError] = useState("");
+  const visibleDocuments = documents.filter((d) =>
+    d.title.toLocaleLowerCase().includes(draftQuery.trim().toLocaleLowerCase()),
+  );
   const [doc, setDoc] = useState<Draft | null>(null);
   const [index, setIndex] = useState(0);
   const [dirty, setDirty] = useState(false);
@@ -153,12 +160,20 @@ export default function Studio() {
   const [available, setAvailable] = useState(false);
   const createId = useRef<string | null>(null);
   const loadList = useCallback(async () => {
-    const rows = (await client.request("/documents")) as Draft[];
-    if (!Array.isArray(rows)) throw new ApiError(502);
-    setDocuments(rows);
+    setListBusy(true);
+    setListError("");
+    try {
+      const rows = (await client.request("/documents")) as Draft[];
+      if (!Array.isArray(rows)) throw new ApiError(502);
+      setDocuments(rows);
+    } catch (cause) {
+      setListError(friendly(cause));
+    } finally {
+      setListBusy(false);
+    }
   }, [client]);
   useEffect(() => {
-    void loadList().catch((e) => setError(friendly(e)));
+    void loadList();
   }, [loadList]);
   useEffect(() => {
     let active = true;
@@ -240,6 +255,7 @@ export default function Studio() {
         }),
       })) as Draft;
       createId.current = null;
+      setDraftQuery("");
       navigate(`/app/studio/${row.id}`);
       await loadList();
     } catch (cause) {
@@ -405,7 +421,7 @@ export default function Studio() {
         </p>
       )}
       {notice && (
-        <p role="status" className="notice">
+        <p role="status" aria-label="Document updates" className="notice">
           {notice}
         </p>
       )}
@@ -421,7 +437,56 @@ export default function Studio() {
           >
             New document
           </Link>
-          {documents.map((d) => (
+          <SearchField
+            label="Search draft titles"
+            value={draftQuery}
+            onChange={setDraftQuery}
+          />
+          {listBusy && (
+            <p
+              className="studio-empty-note"
+              role="status"
+              aria-label="Draft list updates"
+            >
+              Loading your drafts…
+            </p>
+          )}
+          {listError && (
+            <div className="draft-list-error">
+              <p className="error-banner" role="alert">
+                Could not load your drafts. {listError}
+              </p>
+              <button
+                type="button"
+                className="history-more"
+                disabled={listBusy}
+                onClick={() => {
+                  void loadList();
+                }}
+              >
+                Retry drafts
+              </button>
+            </div>
+          )}
+          {!listBusy && !listError && !documents.length && (
+            <p className="studio-empty-note">
+              Your saved documents will appear here. Start a new document to
+              create your first draft.
+            </p>
+          )}
+          {!!draftQuery.trim() &&
+            !!documents.length &&
+            !visibleDocuments.length && (
+              <p
+                className="studio-empty-note"
+                role="status"
+                aria-label="Draft list updates"
+              >
+                No matching draft titles. Try another title or clear your
+                search.
+              </p>
+            )}
+          {visibleDocuments.map((d) => (
             <Link
               key={d.id}
               to={`/app/studio/${d.id}`}
@@ -480,9 +545,9 @@ export default function Studio() {
                 </select>
               </label>
               <p className="field-hint">
-                A writing budget of about 350 words per target page. The
-                exported PDF reports its actual page count; no blank-page
-                padding.
+                Choose a target to guide your draft. The final PDF length
+                depends on your content and formatting; its actual page count is
+                shown after export.
               </p>
               <label>
                 Outline · one section heading per line

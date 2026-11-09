@@ -1,82 +1,126 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { Icon, type IconName } from "../components/Icon";
+const tools: {
+  icon: IconName;
+  title: string;
+  description: string;
+  to: string;
+  label: string;
+}[] = [
+  {
+    icon: "chat",
+    title: "Study chat",
+    description:
+      "Work through a question, explore an idea, or get a step-by-step explanation.",
+    to: "/app/chat",
+    label: "Open study chat",
+  },
+  {
+    icon: "document",
+    title: "Document Studio",
+    description:
+      "Turn a brief into an outline. Draft, refine and export your work as a PDF.",
+    to: "/app/studio",
+    label: "Create a document",
+  },
+  {
+    icon: "book",
+    title: "Knowledge library",
+    description:
+      "Contribute learning material and follow its review in one place.",
+    to: "/app/knowledge",
+    label: "Explore the library",
+  },
+];
 export function Overview() {
   const { user } = useAuth();
   if (!user) return null;
   return (
-    <main id="main-content" tabIndex={-1} className="workspace-main">
+    <main id="main-content" tabIndex={-1} className="workspace-main dashboard">
       <div className="workspace-page-title">
         <div>
-          <p className="eyebrow">A little space for possibility</p>
+          <p className="eyebrow">Your learning workspace</p>
           <h1>
             Hello, {user.full_name.split(" ")[0]}
             <span className="greeting-dot">.</span>
           </h1>
-          <p>Welcome to your EduMind workspace.</p>
+          <p>What would you like to work on today?</p>
         </div>
-        <span className="account-status">
-          <span aria-hidden="true" /> Active account
-        </span>
+        <div className="dashboard-heading-actions">
+          <span className="account-status">
+            {user.role === "admin"
+              ? "Administrator"
+              : user.role === "contributor"
+                ? "Contributor"
+                : "Student"}
+          </span>
+          <Link className="button" to="/app/chat">
+            Start a conversation <Icon name="arrow" />
+          </Link>
+        </div>
       </div>
-      <section className="welcome-card">
+      <section className="dashboard-banner">
         <div>
-          <span className="eyebrow">One idea at a time</span>
+          <span className="banner-label">
+            <Icon name="spark" /> A little curiosity goes a long way
+          </span>
           <h2>
-            Keep your curiosity.
+            Your next breakthrough
             <br />
-            <em>We’ll build the clarity.</em>
+            starts with a question.
           </h2>
           <p>
-            Your conversation workspace is ready. Keep your questions together
-            and check the availability of answers in study chat.
+            A space to think clearly, build understanding and bring your ideas
+            together.
           </p>
-          <Link className="button" to="/app/chat">
-            Start a conversation <span aria-hidden="true">↗</span>
-          </Link>
         </div>
-        <div className="welcome-art" aria-hidden="true">
+        <div className="banner-motif" aria-hidden="true">
           <span>?</span>
-          <span>↗</span>
           <span>✦</span>
+          <span>↗</span>
         </div>
       </section>
-      <div className="workspace-card-grid">
-        <section className="info-card">
-          <p className="eyebrow">Your account</p>
-          <h2>Make yourself at home.</h2>
-          <dl className="compact-details">
-            <div>
-              <dt>Signed in as</dt>
-              <dd>{user.email}</dd>
-            </div>
-            <div>
-              <dt>Account type</dt>
-              <dd>
-                {user.role === "admin"
-                  ? "Administrator"
-                  : user.role === "contributor"
-                    ? "Contributor"
-                    : "Student"}
-              </dd>
-            </div>
-          </dl>
-          <Link className="text-link" to="/app/account">
-            Account details <span aria-hidden="true">→</span>
-          </Link>
-        </section>
-        <section className="info-card learning-note">
-          <span className="small-symbol" aria-hidden="true">
-            ✦
-          </span>
-          <p className="eyebrow">Worth remembering</p>
-          <h2>
-            Understanding begins
-            <br />
-            with a question.
-          </h2>
-          <p>There’s no small question when you’re learning something new.</p>
-        </section>
+      <div className="dashboard-section-heading">
+        <h2>Make room for good work</h2>
+        <span>Choose a tool to get started</span>
       </div>
+      <section className="tool-grid" aria-label="Learning tools">
+        {tools.map((tool) => (
+          <Link
+            to={tool.to}
+            className={`tool-card tool-${tool.icon}`}
+            key={tool.to}
+          >
+            <span className="tool-icon">
+              <Icon name={tool.icon} />
+            </span>
+            <h3>{tool.title}</h3>
+            <p>{tool.description}</p>
+            <span className="tool-action">
+              {tool.label}
+              <Icon name="arrow" />
+            </span>
+          </Link>
+        ))}
+      </section>
+      <section
+        className="getting-started"
+        aria-labelledby="getting-started-title"
+      >
+        <div>
+          <p className="eyebrow">A useful starting point</p>
+          <h2 id="getting-started-title">Better context. Clearer answers.</h2>
+          <p>
+            Share your topic, what you already know and the part you’re finding
+            difficult. Review AI responses and check important facts before
+            using them.
+          </p>
+        </div>
+        <Link className="text-link" to="/app/account">
+          Manage your account <span aria-hidden="true">→</span>
+        </Link>
+      </section>
     </main>
   );
 }

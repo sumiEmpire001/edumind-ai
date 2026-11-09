@@ -1,3 +1,4 @@
+import { Icon } from "../components/Icon";
 import { useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
@@ -210,7 +211,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
                   : registering
                     ? "Create account"
                     : "Sign in"}
-                <span aria-hidden="true">↗</span>
+                <Icon name="arrow" />
               </button>
             </fieldset>
           </form>

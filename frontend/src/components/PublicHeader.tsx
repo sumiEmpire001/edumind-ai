@@ -1,3 +1,4 @@
+import { Icon } from "./Icon";
 import { useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
@@ -42,7 +43,7 @@ export function PublicHeader() {
               to="/app"
               onClick={() => setOpen(false)}
             >
-              My workspace <span aria-hidden="true">↗</span>
+              My workspace <Icon name="arrow" />
             </Link>
           ) : (
             <>
@@ -58,7 +59,7 @@ export function PublicHeader() {
                 to="/register"
                 onClick={() => setOpen(false)}
               >
-                Get started <span aria-hidden="true">↗</span>
+                Get started <Icon name="arrow" />
               </Link>
             </>
           )}

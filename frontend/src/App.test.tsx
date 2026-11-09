@@ -104,7 +104,9 @@ it("signs in and shows the actual account workspace", async () => {
   expect(
     await screen.findByRole("heading", { name: /Hello, Test/ }),
   ).toBeInTheDocument();
-  expect(screen.getByText(user.email)).toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", { name: "Document Studio" }),
+  ).toBeInTheDocument();
 });
 it("prevents duplicate submissions while a login request is pending", async () => {
   let resolve!: (value: Response) => void;

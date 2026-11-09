@@ -28,7 +28,9 @@ test("drafts, expands, edits, reloads and exports a document", async ({
   await page
     .getByRole("button", { name: "Draft remaining sections", exact: true })
     .click();
-  await expect(page.getByRole("status")).toContainText("Drafting finished");
+  await expect(
+    page.getByRole("status", { name: "Document updates", exact: true }),
+  ).toContainText("Drafting finished");
   await expect(
     page.getByRole("button", { name: /3\. Conclusion/ }),
   ).toContainText("Drafted");
@@ -38,7 +40,9 @@ test("drafts, expands, edits, reloads and exports a document", async ({
   await page
     .getByRole("button", { name: "Expand selected section", exact: true })
     .click();
-  await expect(page.getByRole("status")).toContainText("Drafting finished");
+  await expect(
+    page.getByRole("status", { name: "Document updates", exact: true }),
+  ).toContainText("Drafting finished");
   await expect(
     page.getByLabel("Section text", { exact: true }),
   ).not.toHaveValue(original);
@@ -60,7 +64,9 @@ test("drafts, expands, edits, reloads and exports a document", async ({
   const path = await file.path();
   expect(path).toBeTruthy();
   expect((await readFile(path!)).subarray(0, 5).toString()).toBe("%PDF-");
-  await expect(page.getByRole("status")).toContainText("actual pages");
+  await expect(
+    page.getByRole("status", { name: "Document updates", exact: true }),
+  ).toContainText("actual pages");
 });
 
 test("attaches an image to chat and downloads the answer PDF", async ({

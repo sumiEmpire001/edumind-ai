@@ -18,6 +18,7 @@ from app.api.documents import router as documents_router
 from app.api.health import router
 from app.api.inbox import router as inbox_router
 from app.api.knowledge import router as knowledge_router
+from app.api.learning import router as learning_router
 from app.api.users import router as users_router
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
@@ -120,5 +121,6 @@ def create_app(
     app.include_router(users_router)
     app.include_router(chat_router)
     app.include_router(knowledge_router)
+    app.include_router(learning_router)
     app.include_router(inbox_router)
     return app

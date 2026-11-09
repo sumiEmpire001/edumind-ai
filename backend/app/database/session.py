@@ -4,8 +4,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.config import Settings
 
-SCHEMA_REVISION = "0006_studio"
-COMPATIBLE_SCHEMA_REVISIONS = {SCHEMA_REVISION, "0007_learning"}
+SCHEMA_REVISION = "0007_learning"
 
 
 def build_engine(settings: Settings) -> Engine:
@@ -31,4 +30,4 @@ def check_database(engine: Engine) -> bool:
             text("SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname='vector')")
         )
         revision = connection.scalar(text("SELECT version_num FROM alembic_version"))
-        return bool(vector and revision in COMPATIBLE_SCHEMA_REVISIONS)
+        return bool(vector and revision == SCHEMA_REVISION)

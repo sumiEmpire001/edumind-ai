@@ -4,7 +4,7 @@ permissions:
   contents: read
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -34,10 +34,15 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: ruff check .
       - run: ruff format --check .
-      - name: Check backup client compatibility
+      - name: Select PostgreSQL 16 backup clients
         run: |
-          pg_dump --version
-          pg_restore --version
+          if ! test -x /usr/lib/postgresql/16/bin/pg_dump; then
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client-16
+          fi
+          echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
+          /usr/lib/postgresql/16/bin/pg_dump --version
+          /usr/lib/postgresql/16/bin/pg_restore --version
       - run: pytest -q -rP
       - run: pip-audit -r requirements.txt
   frontend:
@@ -119,6 +124,14 @@ jobs:
         working-directory: frontend
       - run: npm run test:e2e
         working-directory: frontend
+      - name: Preserve responsive UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: responsive-ui-screenshots
+          path: frontend/test-results/responsive-*/ui-*.png
+          retention-days: 3
+          if-no-files-found: ignore
       - name: Preserve browser failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
