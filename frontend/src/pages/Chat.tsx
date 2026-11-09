@@ -26,6 +26,7 @@ import {
   type Attachment,
 } from "../chat/Attachments";
 import { downloadPdf } from "../studio/download";
+import "./Chat.css";
 
 const failureText: Record<string, string> = {
   timeout: "The answer timed out. Your question was saved.",
@@ -116,6 +117,18 @@ export default function Chat() {
   const creationId = useRef<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const historyToggle = useRef<HTMLButtonElement>(null);
+  const chatTools = useRef<HTMLDetailsElement>(null);
+  const attachmentTools = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    function dismissTools(event: PointerEvent) {
+      for (const tools of [chatTools.current, attachmentTools.current]) {
+        if (tools?.open && !tools.contains(event.target as Node))
+          tools.open = false;
+      }
+    }
+    document.addEventListener("pointerdown", dismissTools);
+    return () => document.removeEventListener("pointerdown", dismissTools);
+  }, []);
   const [renaming, setRenaming] = useState(false);
   const [title, setTitle] = useState("");
   const [editing, setEditing] = useState(false);
@@ -423,40 +436,135 @@ export default function Chat() {
     }
   }
   return (
-    <main id="main-content" tabIndex={-1} className="chat-workspace">
-      <div className="chat-mobile-toolbar">
-        <h1>Study chat</h1>
-        <button
-          ref={historyToggle}
-          type="button"
-          aria-controls="conversation-history"
-          aria-expanded={historyOpen}
-          onClick={() => setHistoryOpen(!historyOpen)}
-        >
-          Conversations {historyOpen ? "−" : "+"}
-        </button>
-      </div>
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className={
+        historyOpen
+          ? "chat-workspace chat-compact history-visible"
+          : "chat-workspace chat-compact"
+      }
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && historyOpen) {
+          setHistoryOpen(false);
+          historyToggle.current?.focus();
+        }
+      }}
+    >
+      <header className="study-toolbar">
+        <div className="study-title">
+          {data && <p>Study chat</p>}
+          <h1 title={data?.conversation.title}>
+            {data?.conversation.title || "Study chat"}
+          </h1>
+        </div>
+        <div className="study-controls">
+          <button
+            ref={historyToggle}
+            type="button"
+            aria-label="Conversations"
+            aria-controls="conversation-history"
+            aria-expanded={historyOpen}
+            onClick={() => {
+              if (chatTools.current) chatTools.current.open = false;
+              setHistoryOpen(!historyOpen);
+            }}
+          >
+            <Icon name="chat" />
+            <span className="study-control-label">History</span>
+          </button>
+          {conversationId && (
+            <button
+              className="study-new"
+              type="button"
+              aria-label="New conversation"
+              disabled={creating}
+              onClick={createConversation}
+            >
+              <span aria-hidden="true">＋</span>
+              <span className="study-control-label">New chat</span>
+            </button>
+          )}
+          <details
+            ref={chatTools}
+            className="study-tools"
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && event.currentTarget.open) {
+                event.stopPropagation();
+                event.currentTarget.open = false;
+                event.currentTarget.querySelector("summary")?.focus();
+              }
+            }}
+            onBlur={(event) => {
+              if (
+                event.relatedTarget &&
+                !event.currentTarget.contains(event.relatedTarget)
+              )
+                event.currentTarget.open = false;
+            }}
+          >
+            <summary aria-label="Chat options">
+              <span aria-hidden="true">···</span>
+              <span className="study-control-label">More</span>
+            </summary>
+            <div className="study-menu">
+              <button
+                type="button"
+                onClick={() => {
+                  if (chatTools.current) chatTools.current.open = false;
+                  void refresh();
+                }}
+                disabled={loading}
+              >
+                Refresh
+              </button>
+              {data && (
+                <>
+                  <button
+                    type="button"
+                    disabled={exporting || !data.messages.length}
+                    onClick={() => {
+                      if (chatTools.current) chatTools.current.open = false;
+                      void exportPdf();
+                    }}
+                  >
+                    {exporting ? "Preparing PDF…" : "Export conversation PDF"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={editing}
+                    onClick={() => {
+                      if (chatTools.current) chatTools.current.open = false;
+                      setTitle(data.conversation.title);
+                      setRenaming(true);
+                    }}
+                  >
+                    Rename
+                  </button>
+                  <button
+                    className="study-remove"
+                    type="button"
+                    disabled={editing}
+                    onClick={() => {
+                      if (chatTools.current) chatTools.current.open = false;
+                      void remove();
+                    }}
+                  >
+                    Remove
+                  </button>
+                </>
+              )}
+            </div>
+          </details>
+        </div>
+      </header>
       <aside
         id="conversation-history"
-        className={historyOpen ? "chat-history is-open" : "chat-history"}
-        onKeyDown={(e) => {
-          if (e.key === "Escape" && historyOpen) {
-            setHistoryOpen(false);
-            historyToggle.current?.focus();
-          }
-        }}
+        className="chat-history"
+        aria-label="Saved conversations"
+        hidden={!historyOpen}
       >
-        <div className="history-heading">
-          <p className="eyebrow">YOUR CONVERSATIONS</p>
-          <button
-            className="button button-full"
-            disabled={creating}
-            onClick={createConversation}
-          >
-            {creating ? "Creating…" : "New conversation"}
-            <span aria-hidden="true">＋</span>
-          </button>
-        </div>
+        <h2>Conversations</h2>
         {listError && (
           <p role="alert" className="error-banner">
             {listError}
@@ -532,60 +640,24 @@ export default function Chat() {
         )}
       </aside>
       <section className="chat-panel" aria-label="Study conversation">
-        <header className="chat-heading">
-          <div>
-            <p className="eyebrow">A clearer way to learn</p>
-            <h1>{data?.conversation.title || "Study chat"}</h1>
-          </div>
-          <div className="chat-actions">
+        {listError && !historyOpen && (
+          <p role="alert" className="error-banner">
+            {listError}
             <button
+              className="inline-retry"
               type="button"
-              onClick={() => {
-                void refresh();
-              }}
-              disabled={loading}
+              onClick={() => setHistoryOpen(true)}
             >
-              Refresh
+              Open conversation history
             </button>
-            {data && (
-              <>
-                <button
-                  type="button"
-                  disabled={exporting || !data.messages.length}
-                  onClick={() => {
-                    void exportPdf();
-                  }}
-                >
-                  {exporting ? "Preparing PDF…" : "Export conversation PDF"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTitle(data.conversation.title);
-                    setRenaming(true);
-                  }}
-                  disabled={editing}
-                >
-                  Rename
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void remove();
-                  }}
-                  disabled={editing}
-                >
-                  Remove
-                </button>
-              </>
-            )}
-          </div>
-        </header>
+          </p>
+        )}
         {renaming && (
           <form onSubmit={rename} className="rename-form">
             <label htmlFor="conversation-title">Conversation title</label>
             <input
               id="conversation-title"
+              autoFocus
               maxLength={80}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -656,16 +728,13 @@ export default function Chat() {
           {loading && !data && <p role="status">Loading this conversation…</p>}
           {!conversationId && (
             <div className="chat-empty">
-              <span aria-hidden="true">✦</span>
-              <p className="eyebrow">One question at a time</p>
-              <h2>
-                Make room for
-                <br />
-                <em>understanding.</em>
-              </h2>
+              <span aria-hidden="true">
+                <Icon name="spark" />
+              </span>
+              <h2>What are you studying?</h2>
               <p>
-                Keep your questions and follow-ups together in a personal
-                conversation.
+                Start a chat to work through a question, revise a topic, or make
+                a study plan.
               </p>
               <button
                 className="button"
@@ -678,42 +747,42 @@ export default function Chat() {
           )}
           {data && !data.messages.length && (
             <div className="chat-empty">
-              <span aria-hidden="true">?</span>
-              <h2>
-                Where would you
-                <br />
-                like to begin?
-              </h2>
-              <p>
-                Ask a question, include the values you know, and say what you’d
-                like to understand.
-              </p>
-              <div
-                className="question-suggestions"
-                aria-label="Question starters"
-              >
-                {[
-                  ["Explain a concept", "Explain this concept step by step: "],
-                  [
-                    "Work through a problem",
-                    "Help me work through this problem, explaining each step: ",
-                  ],
-                  ["Make a study plan", "Help me create a study plan for "],
-                ].map(([label, question]) => (
-                  <button
-                    key={label}
-                    type="button"
-                    disabled={!cap?.available || sending || pending}
-                    onClick={() => {
-                      setDraft(question);
-                      document.getElementById("academic-question")?.focus();
-                    }}
-                  >
-                    {label}
-                    <span aria-hidden="true"> →</span>
-                  </button>
-                ))}
-              </div>
+              <span aria-hidden="true">
+                <Icon name="spark" />
+              </span>
+              <h2>Ask your first question</h2>
+              <p>Share the problem or topic you want to understand.</p>
+              <details className="study-starters">
+                <summary>Question starters</summary>
+                <div className="question-suggestions">
+                  {[
+                    [
+                      "Explain a concept",
+                      "Explain this concept step by step: ",
+                    ],
+                    [
+                      "Work through a problem",
+                      "Help me work through this problem, explaining each step: ",
+                    ],
+                    ["Make a study plan", "Help me create a study plan for "],
+                  ].map(([label, question]) => (
+                    <button
+                      key={label}
+                      type="button"
+                      disabled={!cap?.available || sending || pending}
+                      onClick={(event) => {
+                        const starters = event.currentTarget.closest("details");
+                        if (starters) starters.open = false;
+                        setDraft(question);
+                        document.getElementById("academic-question")?.focus();
+                      }}
+                    >
+                      {label}
+                      <span aria-hidden="true"> →</span>
+                    </button>
+                  ))}
+                </div>
+              </details>
             </div>
           )}
           {data?.has_older && (
@@ -751,21 +820,6 @@ export default function Chat() {
                         ? "Verification response"
                         : "EduMind"}
                   </strong>
-                  <CopyButton
-                    text={m.content}
-                    label={m.role === "user" ? "Copy question" : "Copy answer"}
-                  />
-                  {m.role === "assistant" && (
-                    <button
-                      type="button"
-                      disabled={exporting}
-                      onClick={() => {
-                        void exportPdf(m.id);
-                      }}
-                    >
-                      Download answer PDF
-                    </button>
-                  )}
                 </div>
                 {!!m.attachments?.length && (
                   <ul
@@ -789,13 +843,32 @@ export default function Chat() {
                 {m.role === "user" ? (
                   <p className="question-text">{m.content}</p>
                 ) : (
-                  <>
-                    <Markdown text={m.content} />
-                    <p className="source-note">
-                      No reference sources are attached to this response.
-                    </p>
-                  </>
+                  <Markdown text={m.content} />
                 )}
+                <details className="study-message-tools">
+                  <summary>
+                    {m.role === "user" ? "Question actions" : "Answer actions"}
+                  </summary>
+                  <div>
+                    <CopyButton
+                      text={m.content}
+                      label={
+                        m.role === "user" ? "Copy question" : "Copy answer"
+                      }
+                    />
+                    {m.role === "assistant" && (
+                      <button
+                        type="button"
+                        disabled={exporting}
+                        onClick={() => {
+                          void exportPdf(m.id);
+                        }}
+                      >
+                        Download answer PDF
+                      </button>
+                    )}
+                  </div>
+                </details>
                 {m.role === "user" && q?.status === "failed" && (
                   <p className="failed-answer">
                     {failureText[q.error_code || ""] ||
@@ -823,41 +896,72 @@ export default function Chat() {
           </button>
         )}
         {data && (
-          <form className="chat-composer" onSubmit={send}>
-            <Attachments
-              key={conversationId}
-              client={client}
-              conversationId={conversationId!}
-              available={!!cap?.attachments_available}
-              disabled={sending || pending}
-              value={attached}
-              onChange={(items) => {
-                if (selected.current === conversationId) {
-                  attachmentVersion.current++;
-                  setAttached(items);
-                }
-              }}
-              onBusy={(busy) => {
-                if (selected.current === conversationId) {
-                  if (busy) attachmentVersion.current++;
-                  setUploading(busy);
-                }
-              }}
-            />
+          <form
+            className="chat-composer"
+            onSubmit={(event) => {
+              if (attachmentTools.current) attachmentTools.current.open = false;
+              void send(event);
+            }}
+          >
             <label htmlFor="academic-question">Your question</label>
             <textarea
               id="academic-question"
-              rows={3}
+              rows={2}
               maxLength={4000}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder="What would you like to understand?"
+              placeholder="Ask EduMind a study question…"
               disabled={sending || pending || !cap?.available}
             />
             <div className="composer-bottom">
-              <small>
-                {Array.from(draft).length}/4000 · Include units and context.
-              </small>
+              <details
+                ref={attachmentTools}
+                key={conversationId}
+                className="study-attachments"
+                onKeyDown={(event) => {
+                  if (event.key === "Escape" && event.currentTarget.open) {
+                    event.stopPropagation();
+                    event.currentTarget.open = false;
+                    event.currentTarget.querySelector("summary")?.focus();
+                  }
+                }}
+              >
+                <summary
+                  aria-label={
+                    attached.length
+                      ? `Attach files, ${attached.length} attached`
+                      : "Attach files"
+                  }
+                >
+                  <span aria-hidden="true">＋</span> Attach files
+                  {attached.length > 0 ? ` (${attached.length})` : ""}
+                </summary>
+                <div className="study-attachment-panel">
+                  <Attachments
+                    key={conversationId}
+                    client={client}
+                    conversationId={conversationId!}
+                    available={!!cap?.attachments_available}
+                    disabled={sending || pending}
+                    value={attached}
+                    onChange={(items) => {
+                      if (selected.current === conversationId) {
+                        attachmentVersion.current++;
+                        setAttached(items);
+                      }
+                    }}
+                    onBusy={(busy) => {
+                      if (selected.current === conversationId) {
+                        if (busy) attachmentVersion.current++;
+                        setUploading(busy);
+                      }
+                    }}
+                  />
+                </div>
+              </details>
+              {draft.length >= 3600 && (
+                <small className="study-limit">{draft.length}/4000</small>
+              )}
               <button
                 type="submit"
                 className="button"

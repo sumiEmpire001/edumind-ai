@@ -118,7 +118,7 @@ it("discloses verification mode and saves a question and its answer", async () =
   ).toBeInTheDocument();
   expect(screen.getByText("Explain force")).toBeInTheDocument();
   expect(
-    screen.getByRole("button", { name: "Copy question" }),
+    screen.getByRole("button", { name: "Copy question", hidden: true }),
   ).toBeInTheDocument();
   expect(field).toHaveValue("");
 });
@@ -214,6 +214,9 @@ it("filters loaded titles without losing the current question or sending a reque
       : null,
   );
   const field = await screen.findByLabelText("Your question");
+  const historyToggle = screen.getByRole("button", { name: "Conversations" });
+  expect(historyToggle).toHaveAttribute("aria-expanded", "false");
+  fireEvent.click(historyToggle);
   await screen.findByRole("link", { name: /Mechanics revision/ });
   fireEvent.change(field, { target: { value: "Keep my unfinished question" } });
   const search = screen.getByRole("searchbox", {
