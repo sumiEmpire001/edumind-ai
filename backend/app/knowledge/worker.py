@@ -127,8 +127,14 @@ def run_one(engine, store, embeddings):
         )
     except Exception as exc:
         # Parser/provider exceptions never include document content or credentials in logs.
-        logger.error("knowledge_processing_failed kind=%s", type(exc).__name__)
-        fail(engine, jid, did, lease, "processing_failed")
+        logger.error(
+            "knowledge_processing_failed document_id=%s kind=%s sqlstate=%s",
+            did,
+            type(exc).__name__,
+            getattr(getattr(exc, "orig", None), "sqlstate", None),
+        )
+        code = "text_processing_failed" if embeddings is None else "processing_failed"
+        fail(engine, jid, did, lease, code)
     return True
 
 
@@ -147,6 +153,33 @@ def fail(engine, jid, did, lease, code):
             d.active, d.processing_status = False, "failed"
             db.commit()
     return True
+
+
+def retry_for_text_indexing(engine):
+    """Give legacy processing failures one keyword-only attempt."""
+    with Session(engine) as db:
+        candidates = list(
+            db.scalars(
+                select(ProcessingJob.document_id).where(
+                    ProcessingJob.state == "failed",
+                    ProcessingJob.error_code == "processing_failed",
+                )
+            )
+        )
+        for did in candidates:
+            document = db.scalar(
+                select(KnowledgeDocument).where(KnowledgeDocument.id == did).with_for_update()
+            )
+            job = db.scalar(
+                select(ProcessingJob).where(ProcessingJob.document_id == did).with_for_update()
+            )
+            if job.state != "failed" or job.error_code != "processing_failed":
+                continue
+            submission = db.get(KnowledgeSubmission, document.submission_id)
+            if submission.status == "approved":
+                job.state, job.attempts, job.error_code = "queued", 0, None
+                document.processing_status = "queued"
+        db.commit()
 
 
 def main():
@@ -180,8 +213,12 @@ def main():
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
     try:
+        recover = text_only
         while running:
             try:
+                if recover:
+                    retry_for_text_indexing(engine)
+                    recover = False
                 processed = run_one(engine, store, embedder)
             except SQLAlchemyError as exc:
                 logger.warning("knowledge_queue_unavailable kind=%s", type(exc).__name__)
