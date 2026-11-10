@@ -508,6 +508,7 @@ export default function Chat() {
               <span className="study-control-label">More</span>
             </summary>
             <div className="study-menu">
+              <Link to="/app/research">Search the web</Link>
               <button
                 type="button"
                 onClick={() => {

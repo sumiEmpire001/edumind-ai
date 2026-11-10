@@ -1,0 +1,126 @@
+.research-page {
+  max-width: 1000px;
+  display: grid;
+  gap: 20px;
+}
+
+.research-hero {
+  padding: clamp(24px, 5vw, 46px);
+  border-radius: 22px;
+  background: #e7f4ec;
+  color: #173a30;
+}
+
+.research-hero h1 {
+  margin-block: 12px 8px;
+  font-size: clamp(32px, 6vw, 52px);
+  line-height: 1.08;
+}
+
+.research-hero p,
+.research-result p:last-child {
+  margin-bottom: 0;
+}
+
+.research-hero .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.research-card {
+  min-width: 0;
+  padding: clamp(17px, 3vw, 30px);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
+.research-form label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+
+.research-form textarea {
+  display: block;
+  width: 100%;
+  min-height: 105px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid #9aaca2;
+  border-radius: 12px;
+  background: #fbfdfb;
+  color: #183b30;
+  font: inherit;
+}
+
+.research-actions {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.research-actions > span,
+.research-share p {
+  font-size: .875rem;
+  color: var(--muted);
+}
+
+.research-card h2 {
+  font-size: clamp(20px, 3vw, 26px);
+  overflow-wrap: anywhere;
+}
+
+.research-result section,
+.research-share {
+  border-top: 1px solid var(--line);
+  margin-top: 22px;
+  padding-top: 16px;
+}
+
+.research-links {
+  display: grid;
+  gap: 8px;
+  padding-inline-start: 20px;
+  overflow-wrap: anywhere;
+}
+
+.research-prompts {
+  display: grid;
+  list-style: none;
+  padding: 0;
+  margin-bottom: 0;
+  gap: 8px;
+}
+
+.research-prompts button {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 13px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  background: #f3f8f4;
+  color: #173a30;
+  border: 1px solid #dceae0;
+  border-radius: 10px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.research-prompts .ui-icon {
+  flex: none;
+}
+
+@media (max-width: 540px) {
+  .research-actions .button {
+    width: 100%;
+    justify-content: center;
+  }
+}

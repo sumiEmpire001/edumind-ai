@@ -219,3 +219,29 @@ def test_search_requests_more_specific_terms_before_ranking_broad_matches(api, m
     ).json()
     assert narrow["status"] == "sources_found"
     assert len(narrow["sources"]) == 1
+
+
+def test_admin_research_draft_stays_out_of_search_until_approved(api):
+    client, _, student, admin = actors(api)
+    draft = {
+        "question": "What does LAUTECH publish about admissions?",
+        "answer": "Synthetic fixture summary for a university admissions page.",
+        "evidence": "https://example.org/university/admissions",
+    }
+    assert (
+        client.post("/api/v1/admin/learning/drafts", headers=student, json=draft).status_code == 403
+    )
+    saved = client.post("/api/v1/admin/learning/drafts", headers=admin, json=draft)
+    assert saved.status_code == 201
+    assert saved.json()["status"] == "pending"
+    assert saved.json()["evidence"] == draft["evidence"]
+    query = {"question": "LAUTECH admissions"}
+    assert not client.post("/api/v1/learning/query", headers=student, json=query).json()["sources"]
+    assert (
+        review(
+            client, admin, saved.json()["id"], answer=draft["answer"], evidence=draft["evidence"]
+        ).status_code
+        == 200
+    )
+    result = client.post("/api/v1/learning/query", headers=student, json=query).json()
+    assert result["sources"][0]["location"] == draft["evidence"]
