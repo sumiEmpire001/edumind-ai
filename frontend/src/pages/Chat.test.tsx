@@ -267,3 +267,20 @@ it("offers automatic web research and sends an explicit override with the questi
   expect(await screen.findByRole("heading", { name: "Explanation" })).toBeInTheDocument();
   expect(modes).toEqual(["on"]);
 });
+
+it("can search approved knowledge in chat when the AI provider is unavailable", async () => {
+  const sent: string[] = [];
+  setup(false, (path, init) => {
+    if (path.endsWith("/messages")) sent.push(JSON.parse(init.body as string).content);
+    return null;
+  });
+  const field = await screen.findByLabelText("Your question");
+  expect(field).toBeDisabled();
+  fireEvent.click(screen.getByLabelText("Chat options"));
+  fireEvent.click(screen.getByRole("button", { name: "Search approved knowledge" }));
+  expect(field).toBeEnabled();
+  expect(field).toHaveValue("/knowledge ");
+  fireEvent.change(field, { target: { value: "/knowledge Sutterby" } });
+  fireEvent.click(screen.getByRole("button", { name: "Send question" }));
+  await waitFor(() => expect(sent).toEqual(["/knowledge Sutterby"]));
+});

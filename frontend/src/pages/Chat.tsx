@@ -343,7 +343,7 @@ export default function Chat() {
         id,
         question.id,
         content,
-        cap.timeout_seconds,
+        cap?.timeout_seconds ?? 20,
         attached.map((a) => a.id),
         question.researchMode,
       );
