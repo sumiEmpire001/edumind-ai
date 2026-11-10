@@ -6,6 +6,8 @@ from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
+DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
@@ -33,7 +35,8 @@ class Settings(BaseSettings):
     embedding_model: str = "gemini-embedding-001"
     rag_enabled: bool = False
     gemini_api_key: SecretStr | None = None
-    gemini_model: str = Field(default="gemini-2.5-flash", pattern=r"^[a-zA-Z0-9.\-]+$")
+    gemini_model: str = Field(default=DEFAULT_GEMINI_MODEL, pattern=r"^[a-zA-Z0-9.\-]+$")
+    web_research_enabled: bool = True
     gemini_attempts: int = Field(default=3, ge=1, le=3)
     gemini_timeout_seconds: float = Field(default=15, ge=10, le=60)
     chat_user_limit: int = Field(default=20, ge=1)

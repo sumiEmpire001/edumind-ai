@@ -1477,3 +1477,79 @@ button:disabled {
     justify-content: stretch;
   }
 }
+
+/* Keep the workspace usable on narrow and touch-first viewports. */
+.dashboard .tool-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.tool-search .tool-icon {
+  background: #e5effc;
+  color: #305b8f;
+}
+.knowledge-card button.button {
+  background: var(--green);
+  color: white;
+  border-color: transparent;
+}
+.knowledge-card button.button:disabled {
+  color: #425d53;
+  background: #eaf0ec;
+  opacity: 1;
+}
+.knowledge-card button,
+.page-refresh {
+  min-height: 44px;
+}
+.page-refresh {
+  width: auto;
+  align-self: flex-start;
+  flex: 0 0 auto;
+}
+@media (min-width: 761px) and (max-width: 1000px) and (pointer: coarse) {
+  .workspace-shell {
+    display: block;
+  }
+  .workspace-header .menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .workspace-header .workspace-tag {
+    display: none;
+  }
+  .workspace-sidebar {
+    display: none;
+    position: fixed;
+    top: 72px;
+    left: 0;
+    width: min(310px, 85vw);
+    z-index: 35;
+    box-shadow: 12px 0 35px #163e3526;
+  }
+  .workspace-sidebar.is-open {
+    display: flex;
+  }
+  .nav-scrim {
+    display: block;
+    position: fixed;
+    inset: 72px 0 0;
+    padding: 0;
+    border: 0;
+    background: #123d343d;
+    z-index: 34;
+  }
+}
+@media (max-width: 600px) {
+  .dashboard .tool-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-main input:not([type="checkbox"]):not([type="radio"]),
+  .workspace-main select,
+  .workspace-main textarea {
+    font-size: 16px;
+  }
+  .knowledge-heading {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}

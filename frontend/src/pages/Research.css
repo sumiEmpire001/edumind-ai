@@ -124,3 +124,21 @@
     justify-content: center;
   }
 }
+
+.research-links li {
+  min-width: 0;
+}
+.research-publisher {
+  display: inline-block;
+  margin: 0.3rem 0 0 0.5rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  color: #305c4d;
+  background: #e9f3ee;
+  font-size: 0.78rem;
+}
+.research-links li p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}

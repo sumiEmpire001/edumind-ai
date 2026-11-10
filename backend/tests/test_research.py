@@ -36,6 +36,18 @@ def test_research_requires_authentication_and_origin(api):
     search.assert_awaited_once_with(query["question"])
 
 
+def test_research_can_be_disabled(api):
+    client, _, _ = api
+    client.app.state.research = None
+    register(client)
+    headers = auth(login(client))
+    assert client.get("/api/v1/research", headers=headers).json() == {"enabled": False}
+    result = client.post(
+        "/api/v1/research", json={"question": "Verify a recent change"}, headers=headers
+    )
+    assert result.status_code == 503
+
+
 def test_research_surfaces_missing_evidence(api):
     client, _, _ = api
     register(client)

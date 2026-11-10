@@ -100,6 +100,15 @@ role-aware knowledge-library pages. Gemini is available only when the backend ke
 configured; uploads report unavailable until private storage is configured.
 Only `VITE_API_BASE_URL` is public configuration; never put secrets in Vite variables.
 
+## Live web research
+
+Study Chat defaults to Gemini 3.5 Flash-Lite. Use a Google Free tier project
+to keep generation within its free quota. Web Research is enabled by default
+and retrieves public reference articles from Wikipedia and scholarly metadata
+from Crossref. It does not need an API key or call an AI model. Set
+`WEB_RESEARCH_ENABLED=false` to disable it. The Knowledge API searches
+EduMind's approved answers independently.
+
 ## Verification
 
 From `backend` with the virtual environment activated:

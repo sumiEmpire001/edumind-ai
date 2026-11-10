@@ -238,7 +238,7 @@ export default function Learning() {
             knowledge.
           </p>
         </div>
-        <button disabled={busy || loading} onClick={() => void load()}>
+        <button className="button button-secondary page-refresh" disabled={busy || loading} onClick={() => void load()}>
           Refresh
         </button>
       </div>

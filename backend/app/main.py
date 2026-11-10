@@ -11,6 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.ai.gemini import build_provider
 from app.ai.provider import AcademicProvider
+from app.ai.public_search import search_public_sources
 from app.api.attachments import router as attachments_router
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
@@ -64,8 +65,7 @@ def create_app(
     app.include_router(attachments_router)
     app.include_router(documents_router)
     app.state.academic_provider = provider or build_provider(config)
-    # Keep web research separate from retrieval so it receives only the submitted question.
-    app.state.research = getattr(app.state.academic_provider, "research", None)
+    app.state.research = search_public_sources if config.web_research_enabled else None
     app.add_middleware(BodyLimitMiddleware, limit=config.max_request_bytes)
     app.add_middleware(
         CORSMiddleware,
