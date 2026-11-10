@@ -8,6 +8,14 @@ from app.knowledge.learning import KnowledgeQueryTooBroad, search
 
 COMMAND = re.compile(r"^(?:/knowledge\b|search (?:the )?approved knowledge\b(?: for\b)?)", re.I)
 PROVIDER = "knowledge"
+QUESTION_PREFIX = re.compile(
+    r"^(?:please\s+)?(?:what (?:is|are)|explain|define|describe|tell me about)\s+", re.I
+)
+
+
+def automatic_topic(question: str) -> str | None:
+    candidate = QUESTION_PREFIX.sub("", question).strip(" ?.!\t\n")
+    return candidate if 2 <= len(candidate.split()) <= 8 and len(candidate) <= 120 else None
 
 
 def topic(question: str) -> str | None:
@@ -20,18 +28,26 @@ def plain_markdown(value: str) -> str:
     return re.sub(r"([\\\x60*_\[\]<>~|])", r"\\\1", text)
 
 
-def find(engine, query):
+def find(engine, query, *, automatic=False):
     if not 2 <= len(query) <= 2000:
         return "Enter a short topic after /knowledge, such as /knowledge Sutterby.", []
 
     with Session(engine) as db:
         try:
-            matches = search(db, query)[:3]
+            matches = search(db, query, match_title=True)[:3]
         except KnowledgeQueryTooBroad:
-            return "Too many approved passages matched. Add a more specific keyword.", []
+            return (
+                None
+                if automatic
+                else "Too many approved passages matched. Add a more specific keyword."
+            ), []
 
     if not matches:
-        return "No matching approved knowledge. Try a shorter topic or a document keyword.", []
+        return (
+            None
+            if automatic
+            else "No matching approved knowledge. Try a shorter topic or a document keyword."
+        ), []
 
     blocks = ["### Approved knowledge"]
     sources = []

@@ -57,7 +57,7 @@ def ranked(db, query, expression, question, tie_breaker):
     ][:5]
 
 
-def search(db, question):
+def search(db, question, *, match_title=False):
     examples = ranked(
         db,
         select(
@@ -70,8 +70,7 @@ def search(db, question):
         question,
         LearningExample.id,
     )
-    documents = ranked(
-        db,
+    document_query = (
         select(
             KnowledgeChunk.id,
             KnowledgeSubmission.title,
@@ -86,11 +85,17 @@ def search(db, question):
             KnowledgeDocument.active.is_(True),
             KnowledgeDocument.processing_status == "succeeded",
             KnowledgeChunk.version == KnowledgeDocument.version,
-        ),
-        KnowledgeChunk.content,
-        question,
-        KnowledgeChunk.id,
+        )
     )
+    documents = ranked(db, document_query, KnowledgeChunk.content, question, KnowledgeChunk.id)
+    if match_title and not documents:
+        documents = list(
+            db.execute(
+                document_query.where(func.lower(KnowledgeSubmission.title) == canonical(question))
+                .order_by(KnowledgeChunk.ordinal, KnowledgeChunk.id)
+                .limit(3)
+            )
+        )
     sources = [
         {
             "kind": "reviewed_answer",
