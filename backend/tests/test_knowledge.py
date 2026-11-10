@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.knowledge.extract import chunk, extract, validate
 from app.knowledge.retrieval import eligible_query
-from app.knowledge.worker import run_one
+from app.knowledge.worker import retry_for_text_indexing, run_one
 from app.models.identity import User
 from app.models.knowledge import (
     KnowledgeChunk,
@@ -152,6 +152,22 @@ def test_processing_failure_and_reindex(knowledge):
     assert run_one(k.engine, k.store, FakeEmbeddings())
 
 
+def test_legacy_processing_failure_can_retry_without_embeddings(knowledge):
+    k = knowledge
+    sid = upload(k).json()["id"]
+    assert approve(k, sid).status_code == 200
+
+    class Broken(FakeEmbeddings):
+        def embed(self, texts, task="RETRIEVAL_DOCUMENT"):
+            raise RuntimeError("embedding unavailable")
+
+    assert run_one(k.engine, k.store, Broken())
+    retry_for_text_indexing(k.engine)
+    assert run_one(k.engine, k.store, None)
+    retry_for_text_indexing(k.engine)
+    assert not run_one(k.engine, k.store, None)
+
+
 def test_preview_owner_isolation(knowledge):
     k = knowledge
     sid = upload(k).json()["id"]
@@ -217,6 +233,18 @@ def test_application_requires_admin(knowledge):
 def test_invalid_files(name, data, mime):
     with pytest.raises((ValueError, BadZipFile)):
         validate(name, data, mime)
+
+
+def test_extracted_pdf_text_and_metadata_remove_nul_bytes(monkeypatch):
+    pdf = SimpleNamespace(
+        is_encrypted=False,
+        pages=[SimpleNamespace(extract_text=lambda: "Fluid\x00dynamics")],
+        metadata={"/Title": "Fluid\x00dynamics"},
+    )
+    monkeypatch.setattr("app.knowledge.extract.PdfReader", lambda _: pdf)
+    sections, metadata = extract("fluid.pdf", b"%PDF-fixture", "application/pdf")
+    assert sections == [("Page 1", "Fluid dynamics")]
+    assert metadata["embedded_title"] == "Fluid dynamics"
 
 
 def test_extraction_and_bounded_chunks():

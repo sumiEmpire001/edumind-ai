@@ -118,12 +118,17 @@ def extract(filename, data, mime):
         if ext == ".csv":
             text = "\n".join(" | ".join(row) for row in csv.reader(io.StringIO(text)))
         sections = [("Text", text)]
-    cleaned = [(loc, re.sub(r"[ \t]+", " ", text).strip()) for loc, text in sections]
+    cleaned = [
+        (loc, re.sub(r"[ \t]+", " ", text.replace("\x00", " ")).strip()) for loc, text in sections
+    ]
     if sum(len(t) for _, t in cleaned) > 500000:
         raise ValueError("extracted_text_too_large")
     if not any(t for _, t in cleaned):
         raise ValueError("no_text_ocr_required")
-    return cleaned, metadata
+    return cleaned, {
+        key: value.replace("\x00", " ") if isinstance(value, str) else value
+        for key, value in metadata.items()
+    }
 
 
 def chunk(sections, size=1800, overlap=200):
