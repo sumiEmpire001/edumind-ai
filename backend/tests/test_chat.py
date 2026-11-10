@@ -146,6 +146,8 @@ def test_chat_research_routes_current_questions_and_replays_without_searching(ch
     search.assert_awaited_once()
     assert send(chat, cid, question, research_mode="off").status_code == 201
     search.assert_awaited_once()
+    assert send(chat, cid, "Find academic sources about LAUTECH").status_code == 201
+    search.assert_awaited_with("LAUTECH")
 
 
 def test_forced_chat_research_handles_missing_sources(chat):

@@ -26,6 +26,15 @@ RESEARCH_INTENT = re.compile(
     re.IGNORECASE,
 )
 
+SEARCH_PREFIX = re.compile(
+    r"^(?:please\s+)?(?:"
+    r"(?:find|cite|give|include|provide)\s+"
+    r"(?:(?:me|the|some|reliable|academic|peer.reviewed)\s+)*"
+    r"(?:sources|citations|references|papers|studies|evidence)\s+(?:about|on|for)|"
+    r"search (?:the )?(?:web|internet|online) for|look up|research)\s+",
+    re.IGNORECASE,
+)
+
 
 def should_research(question: str, mode: str, has_attachments: bool) -> bool:
     return (
@@ -36,9 +45,10 @@ def should_research(question: str, mode: str, has_attachments: bool) -> bool:
 
 
 async def add_research(context: list[Turn], question: str, search) -> tuple[list[Turn], str, str]:
+    query = SEARCH_PREFIX.sub("", question).strip() or question
     try:
-        async with asyncio.timeout(6):
-            result: ResearchResult = await search(question)
+        async with asyncio.timeout(8):
+            result: ResearchResult = await search(query)
     except (TimeoutError, AcademicError):
         result = ResearchResult(answer="", sources=[], suggestions=[])
     except HTTPException as exc:
