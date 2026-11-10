@@ -102,11 +102,12 @@ Only `VITE_API_BASE_URL` is public configuration; never put secrets in Vite vari
 
 ## Live web research
 
-Study Chat defaults to Gemini 3.5 Flash-Lite. For free-tier use, keep the
-Gemini project on the Free tier and leave `WEB_RESEARCH_ENABLED=false`.
-The Knowledge API can still search approved answers without a generation call.
-Enable `WEB_RESEARCH_ENABLED` only on a deployment configured for Google Search
-grounding. Google bills grounding separately from model input and output.
+Study Chat defaults to Gemini 3.5 Flash-Lite. Use a Google Free tier project
+to keep generation within its free quota. Web Research is enabled by default
+and retrieves public reference articles from Wikipedia and scholarly metadata
+from Crossref. It does not need an API key or call an AI model. Set
+`WEB_RESEARCH_ENABLED=false` to disable it. The Knowledge API searches
+EduMind's approved answers independently.
 
 ## Verification
 

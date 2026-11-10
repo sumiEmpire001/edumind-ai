@@ -17,6 +17,13 @@ const tools: {
     label: "Open study chat",
   },
   {
+    icon: "search",
+    title: "Web research",
+    description: "Find reference articles and academic papers from live public sources.",
+    to: "/app/research",
+    label: "Find sources",
+  },
+  {
     icon: "document",
     title: "Document Studio",
     description:
@@ -78,7 +85,7 @@ export function Overview() {
         <div className="banner-motif" aria-hidden="true">
           <span>?</span>
           <span>✦</span>
-          <span>↗</span>
+          <span><Icon name="arrow" /></span>
         </div>
       </section>
       <div className="dashboard-section-heading">

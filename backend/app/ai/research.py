@@ -13,6 +13,8 @@ from app.ai.provider import AcademicError
 class WebLink(BaseModel):
     title: str
     url: str
+    publisher: str | None = None
+    description: str | None = None
 
 
 class ResearchResult(BaseModel):

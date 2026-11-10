@@ -24,7 +24,7 @@ class ResearchQuestion(InputModel):
 
 def limit_research(request: Request, user_id: str) -> None:
     consume(request, "web-research-user", user_id, 3, 60)
-    consume(request, "web-research-project", "shared", 30, 86400)
+    consume(request, "web-research-project", "shared", 60, 60)
 
 
 @router.get("/research")
