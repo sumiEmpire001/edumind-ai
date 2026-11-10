@@ -284,3 +284,34 @@ def test_study_chat_searches_approved_passages_without_sending_them_to_ai(knowle
     )
     assert response.status_code == 201
     assert [turn.content for turn in provider.contexts[-1]] == ["Explain gravity."]
+
+
+def test_study_chat_checks_index_for_natural_document_question(knowledge):
+    k = knowledge
+    uploaded = k.client.post(
+        "/api/v1/knowledge/submissions?title=Sutterby%20Nanofluid&filename=lesson.txt",
+        headers={**k.contributor, "Content-Type": "text/plain"},
+        content=b"The approved project discusses non-Newtonian flow and heat transfer.",
+    )
+    assert uploaded.status_code == 201, uploaded.text
+    assert approve(k, uploaded.json()["id"]).status_code == 200
+    assert run_one(k.engine, k.store, None)
+    provider = FixtureProvider()
+    k.client.app.state.academic_provider = provider
+    cid = str(uuid4())
+    assert (
+        k.client.post(
+            "/api/v1/conversations", headers=k.contributor, json={"client_id": cid}
+        ).status_code
+        == 201
+    )
+    response = k.client.post(
+        f"/api/v1/conversations/{cid}/messages",
+        headers=k.contributor,
+        json={"request_id": str(uuid4()), "content": "What is Sutterby Nanofluid"},
+    )
+    assert response.status_code == 201, response.text
+    answer = response.json()["messages"][-1]
+    assert answer["provider"] == "knowledge"
+    assert "approved project" in answer["content"]
+    assert provider.calls == 0

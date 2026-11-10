@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app.ai.chat_research import add_research, should_research
+from app.ai.news import is_nigeria_news, news_reply
 from app.ai.provider import AcademicError, AcademicProvider, Turn
 from app.auth.crypto import now, utc
 from app.auth.dependencies import unauthorized
@@ -421,6 +422,7 @@ async def submit(
     search=None,
 ) -> TurnResult:
     query = knowledge_chat.topic(data.content)
+    news = query is None and not data.attachment_ids and is_nigeria_news(data.content)
     if query is not None and data.attachment_ids:
         raise HTTPException(422, "Remove attachments before searching approved knowledge.")
     ticket = await run_in_threadpool(
@@ -431,31 +433,51 @@ async def submit(
         cid,
         data,
         config,
-        provider.available or query is not None,
+        provider.available or query is not None or news,
         trace,
         store,
     )
     if ticket.cached is not None:
         return ticket.cached
-    if query is not None:
+    web_requested = should_research(data.content, "auto", bool(data.attachment_ids))
+    automatic = (
+        knowledge_chat.automatic_topic(data.content)
+        if query is None
+        and not news
+        and not data.attachment_ids
+        and data.research_mode != "on"
+        and not web_requested
+        else None
+    )
+    if query is not None or automatic is not None or news:
+        code, sources = None, []
         try:
-            answer, sources = await run_in_threadpool(knowledge_chat.find, engine, query)
-            code = None
+            if news:
+                answer = await news_reply(data.content, search, data.research_mode)
+            else:
+                answer, sources = await run_in_threadpool(
+                    lambda: knowledge_chat.find(
+                        engine,
+                        query if query is not None else automatic,
+                        automatic=query is None,
+                    )
+                )
         except SQLAlchemyError:
-            answer, code, sources = None, "unavailable", []
-        return await run_in_threadpool(
-            complete,
-            engine,
-            owner,
-            sid,
-            cid,
-            data.request_id,
-            answer,
-            code,
-            knowledge_chat.PROVIDER,
-            trace,
-            sources,
-        )
+            answer, code = None, "unavailable"
+        if answer is not None or query is not None or news:
+            return await run_in_threadpool(
+                complete,
+                engine,
+                owner,
+                sid,
+                cid,
+                data.request_id,
+                answer,
+                code,
+                "news" if news else knowledge_chat.PROVIDER,
+                trace,
+                sources,
+            )
     answer, code, sources = None, None, []
     try:
         context, web_sources, web_notice = ticket.context, "", ""
