@@ -13,11 +13,11 @@ test("admin opens a readable dashboard and researches a LAUTECH question", async
 
   await page.route("**/api/v1/research", (route) => {
     if (route.request().method() === "GET") return route.fulfill({ json: { enabled: true } });
-    expect(route.request().postDataJSON().question).toContain("LAUTECH");
+    expect(route.request().postDataJSON().question).toBe("Ladoke Akintola University of Technology");
     return route.fulfill({
       json: {
-        answer: "An evidence-backed research example.",
-        sources: [{ title: "Fixture source", url: "https://example.org/lautech" }],
+        answer: "Open a result to read the original source.",
+        sources: [{ title: "Fixture source", url: "https://example.org/lautech", publisher: "Wikipedia", description: "A source excerpt." }],
         suggestions: [],
       },
     });
@@ -27,7 +27,9 @@ test("admin opens a readable dashboard and researches a LAUTECH question", async
   await page.getByRole("button", { name: "Search the web" }).click();
   await expect(page.getByRole("link", { name: "Fixture source" }))
     .toHaveAttribute("href", "https://example.org/lautech");
-  await expect(page.getByRole("button", { name: "Save research draft for review" })).toBeVisible();
+  await expect(page.getByText("A source excerpt.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "University website and notices" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Share question for review" })).toBeVisible();
 });
 
 test("research stays unavailable when the deployment disables grounding", async ({ page }) => {
