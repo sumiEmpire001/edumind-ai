@@ -433,3 +433,32 @@ def test_removing_a_conversation_discards_an_inflight_answer(chat):
         )
         assert db.scalar(select(ChatRequest.error_code)) == "cancelled"
         assert "chat.removed" in list(db.scalars(select(AuditLog.action)))
+
+
+def test_nigeria_news_routes_to_dated_sources_instead_of_gemini(chat):
+    search = AsyncMock(
+        return_value=ResearchResult(
+            answer="Recent headlines from Nigerian newsrooms.",
+            sources=[
+                WebLink(
+                    title="Reported headline",
+                    publisher="Channels Television",
+                    url="https://www.channelstv.com/current",
+                    description="10 Nov 2026, 16:15 WAT",
+                )
+            ],
+            suggestions=[],
+        )
+    )
+    chat.client.app.state.research = search
+    question = "What is happening in Nigeria today?"
+    cid = create(chat)
+    response = send(chat, cid, question)
+    assert response.status_code == 201
+    answer = response.json()["messages"][-1]
+    assert answer["provider"] == "news"
+    assert "10 Nov 2026, 16:15 WAT" in answer["content"]
+    search.assert_awaited_once_with(question)
+    assert send(chat, cid, question, research_mode="off").status_code == 201
+    search.assert_awaited_once()
+    assert chat.provider.calls == 0

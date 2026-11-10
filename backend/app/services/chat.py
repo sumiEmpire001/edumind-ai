@@ -7,15 +7,17 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app.ai.chat_research import add_research, should_research
+from app.ai.news import is_nigeria_news, news_reply
 from app.ai.provider import AcademicError, AcademicProvider, Turn
 from app.auth.crypto import now, utc
 from app.auth.dependencies import unauthorized
 from app.core.config import Settings
+from app.knowledge import chat as knowledge_chat
 from app.models.chat import ChatRequest, Conversation, Message
 from app.models.identity import AuditLog, AuthSession, User
 from app.models.knowledge import (
@@ -237,13 +239,17 @@ def prepare(
             fail(item, "interrupted")
         db.flush()
         # Completed pairs only; never mix owners/conversations, pending work, or failed questions.
-        previous = list(
-            db.scalars(
-                select(Message)
-                .join(ChatRequest, Message.request_id == ChatRequest.id)
-                .where(Message.conversation_id == cid, ChatRequest.status == "succeeded")
-                .order_by(Message.sequence.desc())
-                .limit(20)
+        previous = (
+            []
+            if knowledge_chat.topic(data.content) is not None
+            else list(
+                db.scalars(
+                    select(Message)
+                    .join(ChatRequest, Message.request_id == ChatRequest.id)
+                    .where(Message.conversation_id == cid, ChatRequest.status == "succeeded")
+                    .order_by(Message.sequence.desc())
+                    .limit(20)
+                )
             )
         )
         pairs, used = [], len(current_turn.content)
@@ -251,6 +257,8 @@ def prepare(
             pair = previous[index : index + 2]
             if len(pair) != 2 or pair[0].role != "assistant" or pair[1].role != "user":
                 raise HTTPException(503, "Conversation history is temporarily unavailable.")
+            if pair[0].provider == knowledge_chat.PROVIDER:
+                continue
             past = Turn("user", pair[1].content)
             if pair[1].attachments:
                 if index < 4:
@@ -413,11 +421,63 @@ async def submit(
     store=None,
     search=None,
 ) -> TurnResult:
+    query = knowledge_chat.topic(data.content)
+    news = query is None and not data.attachment_ids and is_nigeria_news(data.content)
+    if query is not None and data.attachment_ids:
+        raise HTTPException(422, "Remove attachments before searching approved knowledge.")
     ticket = await run_in_threadpool(
-        prepare, engine, owner, sid, cid, data, config, provider.available, trace, store
+        prepare,
+        engine,
+        owner,
+        sid,
+        cid,
+        data,
+        config,
+        provider.available or query is not None or news,
+        trace,
+        store,
     )
     if ticket.cached is not None:
         return ticket.cached
+    web_requested = should_research(data.content, "auto", bool(data.attachment_ids))
+    automatic = (
+        knowledge_chat.automatic_topic(data.content)
+        if query is None
+        and not news
+        and not data.attachment_ids
+        and data.research_mode != "on"
+        and not web_requested
+        else None
+    )
+    if query is not None or automatic is not None or news:
+        code, sources = None, []
+        try:
+            if news:
+                answer = await news_reply(data.content, search, data.research_mode)
+            else:
+                answer, sources = await run_in_threadpool(
+                    lambda: knowledge_chat.find(
+                        engine,
+                        query if query is not None else automatic,
+                        automatic=query is None,
+                    )
+                )
+        except SQLAlchemyError:
+            answer, code = None, "unavailable"
+        if answer is not None or query is not None or news:
+            return await run_in_threadpool(
+                complete,
+                engine,
+                owner,
+                sid,
+                cid,
+                data.request_id,
+                answer,
+                code,
+                "news" if news else knowledge_chat.PROVIDER,
+                trace,
+                sources,
+            )
     answer, code, sources = None, None, []
     try:
         context, web_sources, web_notice = ticket.context, "", ""
