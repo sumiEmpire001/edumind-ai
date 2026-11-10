@@ -317,3 +317,25 @@
     gap: 5px;
   }
 }
+
+.study-research {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: 4px 0 8px;
+}
+.study-research label,
+.study-research small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.study-research select {
+  padding: 4px 7px;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface, white);
+  color: var(--ink);
+  font: inherit;
+}
