@@ -13,6 +13,7 @@ class Turn:
     role: Literal["user", "assistant"]
     content: str
     media: tuple[MediaPart, ...] = ()
+    web_context: str = field(default="", repr=False)
 
 
 class AcademicError(Exception):

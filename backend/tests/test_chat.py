@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from threading import Event
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
 import pytest
@@ -11,6 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.ai.provider import AcademicError, UnconfiguredProvider
+from app.ai.research import ResearchResult, WebLink
 from app.auth.crypto import now
 from app.core.config import Settings
 from app.main import create_app
@@ -53,11 +55,11 @@ def create(chat, cid=None):
     return response.json()["id"]
 
 
-def send(chat, cid, content="Explain force", rid=None):
+def send(chat, cid, content="Explain force", rid=None, **options):
     return chat.client.post(
         f"/api/v1/conversations/{cid}/messages",
         headers=chat.headers,
-        json={"request_id": str(rid or uuid4()), "content": content},
+        json={"request_id": str(rid or uuid4()), "content": content, **options},
     )
 
 
@@ -109,6 +111,50 @@ def test_success_followups_and_durable_duplicate_protection(chat):
     assert all(
         m["provider"] == "verification" for m in saved["messages"] if m["role"] == "assistant"
     )
+
+
+def test_chat_research_routes_current_questions_and_replays_without_searching(chat):
+    search = AsyncMock(
+        return_value=ResearchResult(
+            answer="",
+            sources=[
+                WebLink(
+                    title="LAUTECH reference",
+                    url="https://en.wikipedia.org/wiki/LAUTECH",
+                    publisher="Wikipedia",
+                    description="A reference excerpt.",
+                )
+            ],
+            suggestions=[],
+        )
+    )
+    chat.client.app.state.research = search
+    cid, rid = create(chat), uuid4()
+    assert send(chat, cid).status_code == 201
+    search.assert_not_awaited()
+
+    question = "When will LAUTECH admissions open this year?"
+    response = send(chat, cid, question, rid)
+    assert response.status_code == 201
+    search.assert_awaited_once_with(question)
+    assert "A reference excerpt." in chat.provider.contexts[-1][-1].web_context
+    assert response.json()["messages"][0]["content"] == question
+    answer = response.json()["messages"][1]["content"]
+    assert "[W1 · Wikipedia · LAUTECH reference](<https://en.wikipedia.org/wiki/LAUTECH>)" in answer
+    assert send(chat, cid, question, rid).json()["replayed"] is True
+    assert send(chat, cid, question, rid, research_mode="off").status_code == 409
+    search.assert_awaited_once()
+    assert send(chat, cid, question, research_mode="off").status_code == 201
+    search.assert_awaited_once()
+
+
+def test_forced_chat_research_handles_missing_sources(chat):
+    search = AsyncMock(side_effect=AcademicError("no_web_sources"))
+    chat.client.app.state.research = search
+    response = send(chat, create(chat), "Explain force", research_mode="on")
+    assert response.status_code == 201
+    assert response.json()["messages"][1]["content"].startswith("Web research found no usable")
+    search.assert_awaited_once_with("Explain force")
 
 
 def test_request_key_cannot_change_content_or_conversation(chat):

@@ -26,6 +26,7 @@ class ConversationUpdate(InputModel):
 class TurnCreate(InputModel):
     request_id: UUID
     content: str = Field(min_length=1, max_length=4000)
+    research_mode: Literal["auto", "on", "off"] = "auto"
     attachment_ids: list[UUID] = Field(default_factory=list, max_length=2)
 
     @field_validator("attachment_ids")

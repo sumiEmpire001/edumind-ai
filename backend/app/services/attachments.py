@@ -70,6 +70,8 @@ def question_hash(data):
     extra = (
         "\nattachments:" + ",".join(map(str, data.attachment_ids)) if data.attachment_ids else ""
     )
+    if data.research_mode != "auto":
+        extra += "\0research:" + data.research_mode
     return digest(data.content + extra)
 
 

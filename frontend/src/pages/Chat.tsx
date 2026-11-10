@@ -17,6 +17,7 @@ import {
   type Capabilities,
   type Conversation,
   type Detail,
+  type ResearchMode,
 } from "../chat/api";
 import { Markdown } from "../chat/Markdown";
 import { CopyButton } from "../chat/CopyButton";
@@ -100,6 +101,7 @@ export default function Chat() {
   const [notice, setNotice] = useState("");
   const [pollFailed, setPollFailed] = useState(false);
   const [draft, setDraft] = useState("");
+  const [researchMode, setResearchMode] = useState<ResearchMode>("auto");
   const [sending, setSending] = useState(false);
   const [attached, setAttached] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -111,6 +113,7 @@ export default function Chat() {
     conversation: string;
     content: string;
     attachmentKey: string;
+    researchMode: ResearchMode;
   } | null>(null);
   const [creating, setCreating] = useState(false);
   const createGuard = useRef(false);
@@ -189,6 +192,7 @@ export default function Chat() {
     setError("");
     setNotice("");
     setDraft("");
+    setResearchMode("auto");
     setAttached([]);
     attachmentVersion.current++;
     setUploading(false);
@@ -304,6 +308,7 @@ export default function Chat() {
     event.preventDefault();
     const content = draft.trim();
     const id = conversationId;
+    const mode = cap?.web_research_available && !attached.length ? researchMode : "auto";
     if (
       !id ||
       !content ||
@@ -321,6 +326,7 @@ export default function Chat() {
       !attempt.current ||
       attempt.current.conversation !== id ||
       attempt.current.content !== content ||
+      attempt.current.researchMode !== mode ||
       attempt.current.attachmentKey !== attached.map((a) => a.id).join(",")
     )
       attempt.current = {
@@ -328,6 +334,7 @@ export default function Chat() {
         conversation: id,
         content,
         attachmentKey: attached.map((a) => a.id).join(","),
+        researchMode: mode,
       };
     const question = attempt.current;
     try {
@@ -337,6 +344,7 @@ export default function Chat() {
         content,
         cap.timeout_seconds,
         attached.map((a) => a.id),
+        question.researchMode,
       );
       const fresh = await loadDetail(id);
       if (
@@ -508,7 +516,6 @@ export default function Chat() {
               <span className="study-control-label">More</span>
             </summary>
             <div className="study-menu">
-              <Link to="/app/research">Search the web</Link>
               <button
                 type="button"
                 onClick={() => {
@@ -914,6 +921,27 @@ export default function Chat() {
               placeholder="Ask EduMind a study question…"
               disabled={sending || pending || !cap?.available}
             />
+            {cap?.web_research_available && (
+              <div className="study-research">
+                <label htmlFor="study-research-mode">Web research</label>
+                <select
+                  id="study-research-mode"
+                  aria-describedby="study-research-help"
+                  value={attached.length ? "off" : researchMode}
+                  disabled={sending || pending || attached.length > 0}
+                  onChange={(event) => setResearchMode(event.target.value as ResearchMode)}
+                >
+                  <option value="auto">Auto</option>
+                  <option value="on">Always search</option>
+                  <option value="off">Off</option>
+                </select>
+                <small id="study-research-help">
+                  {attached.length
+                    ? "Web research is off for messages with attachments."
+                    : "Auto sends the question text to public sources when fresh information or citations are needed."}
+                </small>
+              </div>
+            )}
             <div className="composer-bottom">
               <details
                 ref={attachmentTools}
