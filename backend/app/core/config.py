@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     storage_region: str = "eu-central-1"
     embedding_model: str = "gemini-embedding-001"
     rag_enabled: bool = False
+    knowledge_text_worker_enabled: bool = False
     gemini_api_key: SecretStr | None = None
     gemini_model: str = Field(default=DEFAULT_GEMINI_MODEL, pattern=r"^[a-zA-Z0-9.\-]+$")
     web_research_enabled: bool = True

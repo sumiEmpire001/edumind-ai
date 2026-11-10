@@ -6,13 +6,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.knowledge import learning
+from app.knowledge.retrieval import eligible_query
 from app.knowledge.worker import run_one
 from app.models.identity import User
+from app.models.knowledge import KnowledgeChunk
 from app.models.learning import LearningQuery
 from tests.test_auth import api as api
 from tests.test_auth import auth, login, register
 from tests.test_auth import engine as engine
-from tests.test_knowledge import FakeEmbeddings, approve, upload
+from tests.test_knowledge import approve, upload
 from tests.test_knowledge import knowledge as knowledge
 
 
@@ -138,7 +140,11 @@ def test_only_current_approved_document_versions(knowledge):
         == []
     )
     assert approve(k, sid).status_code == 200
-    assert run_one(k.engine, k.store, FakeEmbeddings())
+    assert run_one(k.engine, k.store, None)
+    with Session(k.engine) as db:
+        passage = db.scalar(select(KnowledgeChunk))
+        assert passage.embedding is None
+        assert db.execute(eligible_query("gemini-embedding-001")).first() is None
     result = k.client.post(
         "/api/v1/learning/query", headers=k.contributor, json={"question": "acceleration"}
     )
