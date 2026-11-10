@@ -101,6 +101,7 @@ export default function Chat() {
   const [notice, setNotice] = useState("");
   const [pollFailed, setPollFailed] = useState(false);
   const [draft, setDraft] = useState("");
+  const canSend = cap?.available || /^\/knowledge\b/i.test(draft.trimStart());
   const [researchMode, setResearchMode] = useState<ResearchMode>("auto");
   const [sending, setSending] = useState(false);
   const [attached, setAttached] = useState<Attachment[]>([]);
@@ -312,7 +313,7 @@ export default function Chat() {
     if (
       !id ||
       !content ||
-      !cap?.available ||
+      !canSend ||
       pending ||
       uploading ||
       sendGuard.current
@@ -516,6 +517,21 @@ export default function Chat() {
               <span className="study-control-label">More</span>
             </summary>
             <div className="study-menu">
+              {data && (
+                <button
+                  type="button"
+                  disabled={sending || pending || attached.length > 0}
+                  onClick={() => {
+                    if (chatTools.current) chatTools.current.open = false;
+                    setDraft((value) =>
+                      /^\/knowledge\b/i.test(value) ? value : "/knowledge " + value.trimStart(),
+                    );
+                    requestAnimationFrame(() => document.getElementById("academic-question")?.focus());
+                  }}
+                >
+                  Search approved knowledge
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -826,7 +842,9 @@ export default function Chat() {
                       ? "You"
                       : m.provider === "verification"
                         ? "Verification response"
-                        : "EduMind"}
+                        : m.provider === "knowledge"
+                          ? "Knowledge API"
+                          : "EduMind"}
                   </strong>
                 </div>
                 {!!m.attachments?.length && (
@@ -919,7 +937,7 @@ export default function Chat() {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="Ask EduMind a study question…"
-              disabled={sending || pending || !cap?.available}
+              disabled={sending || pending || !canSend}
             />
             {cap?.web_research_available && (
               <div className="study-research">
@@ -998,7 +1016,7 @@ export default function Chat() {
                   sending ||
                   pending ||
                   uploading ||
-                  !cap?.available ||
+                  !canSend ||
                   !draft.trim()
                 }
               >

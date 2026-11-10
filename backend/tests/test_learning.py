@@ -1,16 +1,18 @@
 import hashlib
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.ai.provider import UnconfiguredProvider
 from app.knowledge import learning
 from app.knowledge.retrieval import eligible_query
 from app.knowledge.worker import run_one
 from app.models.identity import User
 from app.models.knowledge import KnowledgeChunk
 from app.models.learning import LearningQuery
+from tests.fake_academic import FixtureProvider
 from tests.test_auth import api as api
 from tests.test_auth import auth, login, register
 from tests.test_auth import engine as engine
@@ -251,3 +253,34 @@ def test_admin_research_draft_stays_out_of_search_until_approved(api):
     )
     result = client.post("/api/v1/learning/query", headers=student, json=query).json()
     assert result["sources"][0]["location"] == draft["evidence"]
+
+
+def test_study_chat_searches_approved_passages_without_sending_them_to_ai(knowledge):
+    k = knowledge
+    submission = upload(k).json()["id"]
+    assert approve(k, submission).status_code == 200
+    assert run_one(k.engine, k.store, None)
+    cid = str(uuid4())
+    response = k.client.post(
+        "/api/v1/conversations", headers=k.contributor, json={"client_id": cid}
+    )
+    assert response.status_code == 201
+    route = f"/api/v1/conversations/{cid}/messages"
+    k.client.app.state.academic_provider = UnconfiguredProvider()
+    request = {"request_id": str(uuid4()), "content": "/knowledge acceleration"}
+    response = k.client.post(route, headers=k.contributor, json=request)
+    assert response.status_code == 201, response.text
+    answer = response.json()["messages"][-1]
+    assert answer["provider"] == "knowledge"
+    assert "Mechanics" in answer["content"] and "mass times acceleration" in answer["content"]
+    assert k.client.post(route, headers=k.contributor, json=request).json()["replayed"]
+
+    provider = FixtureProvider()
+    k.client.app.state.academic_provider = provider
+    response = k.client.post(
+        route,
+        headers=k.contributor,
+        json={"request_id": str(uuid4()), "content": "Explain gravity."},
+    )
+    assert response.status_code == 201
+    assert [turn.content for turn in provider.contexts[-1]] == ["Explain gravity."]
