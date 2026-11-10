@@ -18,7 +18,9 @@ def create_e2e_app():
         or not (make_url(database).database or "").endswith("_test")
     ):
         raise RuntimeError("The fixture server requires a named disposable test database")
-    app = create_app(settings, provider=FixtureProvider())
+    app = create_app(
+        settings.model_copy(update={"web_research_enabled": False}), provider=FixtureProvider()
+    )
     from app.auth.dependencies import Admin
     from app.knowledge.worker import run_one
     from tests.test_knowledge import FakeEmbeddings, MemoryStore

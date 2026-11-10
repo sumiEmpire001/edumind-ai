@@ -36,6 +36,11 @@ class Nomination(Question):
     consent_to_share: Literal[True]
 
 
+class ResearchDraft(Question):
+    answer: str = Field(min_length=20, max_length=12000)
+    evidence: str = Field(min_length=8, max_length=2000)
+
+
 class Review(InputModel):
     status: Literal["approved", "rejected"]
     answer: str = Field(default="", max_length=12000)
@@ -61,15 +66,27 @@ def view(row):
 @router.post("/learning/examples", status_code=201, dependencies=[Depends(trusted_origin)])
 def nominate(data: Nomination, request: Request, db: DB, current: Current):
     consume(request, "learning-nominate", str(current.user.id), 10, 3600)
+    return save_pending(db, request, current.user.id, data.question)
+
+
+@router.post("/admin/learning/drafts", status_code=201, dependencies=[Depends(trusted_origin)])
+def save_research_draft(data: ResearchDraft, request: Request, db: DB, admin: Admin):
+    consume(request, "learning-research-draft", str(admin.user.id), 15, 3600)
+    return save_pending(db, request, admin.user.id, data.question, data.answer, data.evidence)
+
+
+def save_pending(db, request, owner_id, question, answer="", evidence=""):
     row = LearningExample(
-        owner_id=current.user.id,
-        question=data.question,
-        question_digest=question_digest(data.question),
+        owner_id=owner_id,
+        question=question,
+        question_digest=question_digest(question),
+        answer=answer.strip(),
+        evidence=evidence.strip(),
         created_at=now(),
         updated_at=now(),
     )
     db.add(row)
-    audit(db, request, "learning.nominated", current.user.id)
+    audit(db, request, "learning.nominated", owner_id)
     try:
         db.commit()
     except IntegrityError:
