@@ -84,7 +84,9 @@ class KnowledgeChunk(Base):
     ordinal: Mapped[int] = mapped_column(Integer)
     location: Mapped[str] = mapped_column(String(100))
     content: Mapped[str] = mapped_column(Text)
-    embedding: Mapped[list] = mapped_column(Vector(768).with_variant(JSON, "sqlite"))
+    embedding: Mapped[list | None] = mapped_column(
+        Vector(768).with_variant(JSON(none_as_null=True), "sqlite")
+    )
     __table_args__ = (
         UniqueConstraint("document_id", "version", "ordinal"),
         Index(

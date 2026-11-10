@@ -29,6 +29,7 @@ def eligible_query(model):
             KnowledgeDocument.processing_status == "succeeded",
             KnowledgeChunk.version == KnowledgeDocument.version,
             KnowledgeDocument.embedding_model == model,
+            KnowledgeChunk.embedding.is_not(None),
         )
     )
 

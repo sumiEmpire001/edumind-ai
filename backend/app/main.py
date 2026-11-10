@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from uuid import uuid4
@@ -45,9 +47,23 @@ def create_app(
             app.state.academic_provider = RetrievalProvider(
                 app.state.academic_provider, app.state.engine, config
             )
+        worker = None
         try:
+            if config.knowledge_text_worker_enabled:
+                worker = await asyncio.create_subprocess_exec(
+                    sys.executable, "-m", "app.knowledge.worker", "--text-only"
+                )
             yield
         finally:
+            if worker and worker.returncode is None:
+                try:
+                    worker.terminate()
+                    await asyncio.wait_for(worker.wait(), timeout=7)
+                except TimeoutError:
+                    worker.kill()
+                    await worker.wait()
+                except ProcessLookupError:
+                    pass
             app.state.engine.dispose()
             close = getattr(app.state.academic_provider, "aclose", None)
             if close is not None:

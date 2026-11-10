@@ -1,18 +1,20 @@
 """Durable PostgreSQL job worker. Run separately: python -m app.knowledge.worker."""
 
+import argparse
 import logging
+import os
 import signal
 import time
 from datetime import timedelta
 from uuid import uuid4
 
 from sqlalchemy import or_, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.auth.crypto import now
 from app.core.config import get_settings
 from app.database.session import build_engine
-from app.knowledge.embeddings import Embeddings
 from app.knowledge.extract import chunk, extract
 from app.models.knowledge import (
     KnowledgeChunk,
@@ -72,9 +74,13 @@ def run_one(engine, store, embeddings):
     try:
         sections, metadata = extract(filename, store.get(key), mime)
         chunks = chunk(sections)
-        if embeddings.model != model:
+        if embeddings is not None and embeddings.model != model:
             raise ValueError("embedding_model_changed")
-        vectors = embeddings.embed([text for _, text in chunks])
+        vectors = (
+            embeddings.embed([text for _, text in chunks])
+            if embeddings is not None
+            else [None] * len(chunks)
+        )
         if len(vectors) != len(chunks):
             raise ValueError("invalid_embeddings")
         with Session(engine) as db:
@@ -113,10 +119,22 @@ def run_one(engine, store, embeddings):
             )
             j.state, j.lease_until, j.error_code = "succeeded", None, None
             db.commit()
+        logger.info(
+            "knowledge_document_indexed document_id=%s chunks=%s mode=%s",
+            did,
+            len(chunks),
+            "text" if embeddings is None else "semantic",
+        )
     except Exception as exc:
         # Parser/provider exceptions never include document content or credentials in logs.
-        logger.error("knowledge_processing_failed kind=%s", type(exc).__name__)
-        fail(engine, jid, did, lease, "processing_failed")
+        logger.error(
+            "knowledge_processing_failed document_id=%s kind=%s sqlstate=%s",
+            did,
+            type(exc).__name__,
+            getattr(getattr(exc, "orig", None), "sqlstate", None),
+        )
+        code = "text_processing_failed" if embeddings is None else "processing_failed"
+        fail(engine, jid, did, lease, code)
     return True
 
 
@@ -137,9 +155,55 @@ def fail(engine, jid, did, lease, code):
     return True
 
 
+def retry_for_text_indexing(engine):
+    """Give legacy processing failures one keyword-only attempt."""
+    with Session(engine) as db:
+        candidates = list(
+            db.scalars(
+                select(ProcessingJob.document_id).where(
+                    ProcessingJob.state == "failed",
+                    ProcessingJob.error_code == "processing_failed",
+                )
+            )
+        )
+        for did in candidates:
+            document = db.scalar(
+                select(KnowledgeDocument).where(KnowledgeDocument.id == did).with_for_update()
+            )
+            job = db.scalar(
+                select(ProcessingJob).where(ProcessingJob.document_id == did).with_for_update()
+            )
+            if job.state != "failed" or job.error_code != "processing_failed":
+                continue
+            submission = db.get(KnowledgeSubmission, document.submission_id)
+            if submission.status == "approved":
+                job.state, job.attempts, job.error_code = "queued", 0, None
+                document.processing_status = "queued"
+        db.commit()
+
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--text-only", action="store_true")
+    text_only = parser.parse_args().text_only
     config = get_settings()
-    engine, store, embedder = build_engine(config), configured_store(config), Embeddings(config)
+    from app.core.logging import configure_logging
+
+    configure_logging(config.log_level)
+    if text_only:
+        # The hosted parser runs in its own low-priority process on the Linux service.
+        import resource
+
+        os.nice(10)
+        limit = 256 * 1024 * 1024
+        resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
+        embedder = None
+    else:
+        from app.knowledge.embeddings import Embeddings
+
+        embedder = Embeddings(config)
+    store = configured_store(config)
+    engine = build_engine(config)
     running = True
 
     def stop(*_):
@@ -149,11 +213,21 @@ def main():
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
     try:
+        recover = text_only
         while running:
-            if not run_one(engine, store, embedder):
-                time.sleep(2)
+            try:
+                if recover:
+                    retry_for_text_indexing(engine)
+                    recover = False
+                processed = run_one(engine, store, embedder)
+            except SQLAlchemyError as exc:
+                logger.warning("knowledge_queue_unavailable kind=%s", type(exc).__name__)
+                processed = False
+            if not processed:
+                time.sleep(5 if text_only else 2)
     finally:
-        embedder.close()
+        if embedder is not None:
+            embedder.close()
         engine.dispose()
 
 

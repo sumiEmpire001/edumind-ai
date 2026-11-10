@@ -10,6 +10,11 @@
 3. Deploy the separate worker with the same backend image and start command
    `python -m app.knowledge.worker`. Give it the API database/storage/Gemini environment.
    Resource-limit it; document parsing must not share the public API's process.
+   On a small Linux test deployment, `KNOWLEDGE_TEXT_WORKER_ENABLED=true`
+   starts one memory-limited subprocess on the API instance for keyword indexing.
+   It uses the existing private storage and database and does not call Gemini.
+   The worker pauses when the web service sleeps. Text-only passages are searchable
+   in Knowledge API. Vector retrieval requires embedded passages.
 4. Create an administrator through the existing private bootstrap command. Never add an
    unauthenticated admin signup endpoint. Review contributor applications in Knowledge library.
 5. Test upload -> pending -> original/text preview -> approve -> queued -> succeeded.
