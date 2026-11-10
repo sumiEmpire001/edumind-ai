@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
+from app.ai.chat_research import add_research, should_research
 from app.ai.provider import AcademicError, AcademicProvider, Turn
 from app.auth.crypto import now, utc
 from app.auth.dependencies import unauthorized
@@ -410,6 +411,7 @@ async def submit(
     config: Settings,
     trace: str,
     store=None,
+    search=None,
 ) -> TurnResult:
     ticket = await run_in_threadpool(
         prepare, engine, owner, sid, cid, data, config, provider.available, trace, store
@@ -418,9 +420,13 @@ async def submit(
         return ticket.cached
     answer, code, sources = None, None, []
     try:
-        answer = await asyncio.wait_for(
-            provider.generate(ticket.context), config.chat_timeout_seconds
-        )
+        context, web_sources, web_notice = ticket.context, "", ""
+        if should_research(data.content, data.research_mode, bool(data.attachment_ids)):
+            if search:
+                context, web_sources, web_notice = await add_research(context, data.content, search)
+            else:
+                web_notice = "Web research is currently unavailable.\n\n"
+        answer = await asyncio.wait_for(provider.generate(context), config.chat_timeout_seconds)
         if not isinstance(answer, str) or not answer.strip():
             raise AcademicError("empty_response")
         if len(answer) > 12000:
@@ -442,7 +448,8 @@ async def submit(
                     for source in sources
                 )
             )
-        answer = answer.strip()
+        remaining = 12000 - len(web_sources) - len(web_notice)
+        answer = web_notice + answer.strip()[:remaining].rstrip() + web_sources
     except TimeoutError:
         code = "timeout"
     except AcademicError as exc:

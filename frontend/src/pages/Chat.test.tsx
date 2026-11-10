@@ -244,3 +244,26 @@ it("filters loaded titles without losing the current question or sending a reque
     fetcher.mock.calls.some((call) => pathOf(call[0]).endsWith("/messages")),
   ).toBe(false);
 });
+
+it("offers automatic web research and sends an explicit override with the question", async () => {
+  const modes: string[] = [];
+  setup(true, (path, init) => {
+    if (path.endsWith("/capabilities"))
+      return json({
+        available: true, mode: "verification", timeout_seconds: 20,
+        web_research_available: true,
+      });
+    if (path.endsWith("/messages"))
+      modes.push(JSON.parse(init.body as string).research_mode);
+    return null;
+  });
+  const mode = await screen.findByLabelText("Web research");
+  expect(mode).toHaveValue("auto");
+  fireEvent.change(mode, { target: { value: "on" } });
+  fireEvent.change(screen.getByLabelText("Your question"), {
+    target: { value: "Explain incident response" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Send question" }));
+  expect(await screen.findByRole("heading", { name: "Explanation" })).toBeInTheDocument();
+  expect(modes).toEqual(["on"]);
+});

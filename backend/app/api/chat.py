@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Query, Request, Response
 from starlette.concurrency import run_in_threadpool
 
+from app.api.research import limit_research
 from app.auth.dependencies import DB, Current
 from app.schemas.chat import (
     ConversationCreate,
@@ -42,6 +43,7 @@ def capabilities(request: Request, identity: Current):
         ),
         "attachment_types": ["image/png", "image/jpeg", "text/plain"],
         "image_generation": False,
+        "web_research_available": request.app.state.research is not None,
     }
 
 
@@ -101,6 +103,12 @@ async def submit(
         store = storage(request)
     except HTTPException:
         store = None
+    search = request.app.state.research
+
+    async def search_with_quota(question: str):
+        await run_in_threadpool(limit_research, request, str(owner))
+        return await search(question)
+
     result = await service.submit(
         request.app.state.engine,
         owner,
@@ -111,6 +119,7 @@ async def submit(
         request.app.state.settings,
         request.state.request_id,
         store,
+        search_with_quota if search else None,
     )
     if result.request.status == "pending":
         response.status_code = 202

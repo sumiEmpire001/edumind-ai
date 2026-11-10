@@ -28,12 +28,14 @@ export interface Detail {
   requests: QuestionRequest[];
   has_older: boolean;
 }
+export type ResearchMode = "auto" | "on" | "off";
 export interface Capabilities {
   available: boolean;
   mode: "unconfigured" | "verification" | "gemini";
   timeout_seconds: number;
   attachments_available?: boolean;
   image_generation?: boolean;
+  web_research_available?: boolean;
 }
 export const validId = (id: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -167,13 +169,17 @@ export class ChatApi {
     content: string,
     timeout: number,
     attachment_ids: string[] = [],
+    research_mode: ResearchMode = "auto",
   ) {
     const r = record(
       await this.client.request(
         `/conversations/${encodeURIComponent(id)}/messages`,
         {
           method: "POST",
-          body: JSON.stringify({ request_id, content, attachment_ids }),
+          body: JSON.stringify({
+            request_id, content, attachment_ids,
+            ...(research_mode !== "auto" && { research_mode }),
+          }),
         },
         (timeout + 15) * 1000,
       ),
