@@ -1,6 +1,7 @@
 """Owner-scoped, resumable document drafting using the existing durable chat engine."""
 
 import math
+import re
 from datetime import datetime, timedelta
 from typing import Literal
 from uuid import UUID, uuid4
@@ -21,8 +22,14 @@ from app.schemas.identity import InputModel
 from app.security.rate_limit import consume
 from app.services import chat
 from app.services.pdf_export import export
+from app.services.word_export import export_word
 
 router = APIRouter(prefix="/api/v1", tags=["document studio"])
+
+
+class AnswerSource(InputModel):
+    conversation_id: UUID
+    message_id: UUID
 
 
 class DocumentCreate(InputModel):
@@ -31,6 +38,7 @@ class DocumentCreate(InputModel):
     brief: str = Field(min_length=10, max_length=1200)
     target_pages: int = Field(default=30, ge=1, le=60)
     outline: list[str] = Field(min_length=3, max_length=18)
+    source_answer: AnswerSource | None = None
 
     @field_validator("title", "brief")
     @classmethod
@@ -129,6 +137,25 @@ def create(data: DocumentCreate, request: Request, db: DB, identity: Current):
     )
     if count >= 20:
         raise HTTPException(409, "Keep at most 20 active document drafts.")
+    sections = [{"title": title, "content": "", "last_request_id": None} for title in data.outline]
+    if source := data.source_answer:
+        chat.regular_owned(db, identity.user.id, source.conversation_id)
+        answer = db.scalar(
+            select(Message).where(
+                Message.id == source.message_id,
+                Message.conversation_id == source.conversation_id,
+                Message.role == "assistant",
+            )
+        )
+        if answer is None:
+            raise HTTPException(404, "Study Chat answer not found.")
+        # Keep the source label in the report without carrying chat-private attachment IDs.
+        sections[0]["content"] = re.sub(
+            r"\[([^\]\n]+)\]\(edumind-pdf:[a-f0-9-]+/[0-9]+\)",
+            r"\1",
+            answer.content,
+            flags=re.IGNORECASE,
+        )
     conversation = Conversation(
         id=uuid4(),
         owner_id=identity.user.id,
@@ -147,9 +174,7 @@ def create(data: DocumentCreate, request: Request, db: DB, identity: Current):
         title=data.title,
         brief=data.brief,
         target_pages=data.target_pages,
-        sections=[
-            {"title": title, "content": "", "last_request_id": None} for title in data.outline
-        ],
+        sections=sections,
         revision=1,
         created_at=now(),
         updated_at=now(),
@@ -369,6 +394,20 @@ def export_document(did: UUID, request: Request, db: DB, identity: Current):
         f"Editable draft: {drafted} of {len(row.sections)} sections contain text. "
         f"Target: {row.target_pages} pages; actual layout may differ. Verify facts and references.",
     )
+
+
+@router.post("/documents/{did}/export-word")
+def export_document_word(did: UUID, request: Request, db: DB, identity: Current):
+    row = owned(db, identity.user.id, did)
+    consume(request, "word-export", str(identity.user.id), 15, 3600)
+    try:
+        return export_word(
+            row.title,
+            identity.user.full_name,
+            [(s["title"], s["content"]) for s in row.sections],
+        )
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
 
 
 @router.post("/conversations/{cid}/export")

@@ -28,6 +28,7 @@ export interface Detail {
   requests: QuestionRequest[];
   has_older: boolean;
 }
+export type StudyMode = "explain" | "quiz";
 export type ResearchMode = "auto" | "on" | "off";
 export interface Capabilities {
   available: boolean;
@@ -170,6 +171,7 @@ export class ChatApi {
     timeout: number,
     attachment_ids: string[] = [],
     research_mode: ResearchMode = "auto",
+    study_mode: StudyMode = "explain",
   ) {
     const r = record(
       await this.client.request(
@@ -179,6 +181,7 @@ export class ChatApi {
           body: JSON.stringify({
             request_id, content, attachment_ids,
             ...(research_mode !== "auto" && { research_mode }),
+            ...(study_mode !== "explain" && { study_mode }),
           }),
         },
         (timeout + 15) * 1000,

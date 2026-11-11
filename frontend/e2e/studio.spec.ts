@@ -67,6 +67,13 @@ test("drafts, expands, edits, reloads and exports a document", async ({
   await expect(
     page.getByRole("status", { name: "Document updates", exact: true }),
   ).toContainText("actual pages");
+  const wordDownloaded = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download Word", exact: true }).click();
+  const word = await wordDownloaded;
+  expect(word.suggestedFilename()).toMatch(/\.docx$/);
+  expect((await readFile((await word.path())!)).subarray(0, 4)).toEqual(
+    Buffer.from([0x50, 0x4b, 0x03, 0x04]),
+  );
 });
 
 test("attaches an image to chat and downloads the answer PDF", async ({
@@ -79,7 +86,7 @@ test("attaches an image to chat and downloads the answer PDF", async ({
   await page.getByRole("button", { name: /Create a conversation/ }).click();
   await expect(page).toHaveURL(/\/app\/chat\/[0-9a-f-]+$/);
   await page.getByLabel("Attach files", { exact: true }).click();
-  const upload = page.getByLabel("Attach an image or text note", {
+  const upload = page.getByLabel("Attach an image, note or PDF", {
     exact: true,
   });
   await expect(upload).toBeEnabled();

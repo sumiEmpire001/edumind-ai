@@ -462,3 +462,19 @@ def test_nigeria_news_routes_to_dated_sources_instead_of_gemini(chat):
     assert send(chat, cid, question, research_mode="off").status_code == 201
     search.assert_awaited_once()
     assert chat.provider.calls == 0
+
+
+def test_quiz_uses_tutor_context_and_skips_web_search(chat):
+    cid = create(chat)
+    rid = uuid4()
+    search = AsyncMock()
+    chat.client.app.state.research = search
+    topic = "Quiz me on the latest news"
+    assert send(chat, cid, topic, rid, study_mode="quiz", research_mode="on").status_code == 201
+    assert chat.provider.contexts[-1][-1].study_mode == "quiz"
+    assert send(chat, cid, topic, rid, research_mode="on").status_code == 409
+    assert send(chat, cid, "My answer is option A", study_mode="quiz").status_code == 201
+    context = chat.provider.contexts[-1]
+    assert [turn.role for turn in context] == ["user", "assistant", "user"]
+    assert context[-1].study_mode == "quiz"
+    search.assert_not_awaited()

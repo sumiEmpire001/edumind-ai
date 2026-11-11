@@ -19,12 +19,14 @@ import {
   type Conversation,
   type Detail,
   type ResearchMode,
+  type StudyMode,
 } from "../chat/api";
 import { Markdown } from "../chat/Markdown";
 import { CopyButton } from "../chat/CopyButton";
 import {
   Attachments,
   ImagePreview,
+  PdfCitation,
   type Attachment,
 } from "../chat/Attachments";
 import { downloadPdf } from "../studio/download";
@@ -103,13 +105,19 @@ export default function Chat() {
   const [notice, setNotice] = useState("");
   const [pollFailed, setPollFailed] = useState(false);
   const [draft, setDraft] = useState("");
-  const canSend = cap?.available || (knowledgeAccess && /^\/knowledge\b/i.test(draft.trimStart()));
+  const [studyMode, setStudyMode] = useState<StudyMode>("explain");
+  const quiz = studyMode === "quiz";
+  const canSend = cap?.available || (!quiz && knowledgeAccess && /^\/knowledge\b/i.test(draft.trimStart()));
   const [researchMode, setResearchMode] = useState<ResearchMode>("auto");
+  const [researchWithFiles, setResearchWithFiles] = useState(false);
   const [sending, setSending] = useState(false);
   const [attached, setAttached] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const attachmentVersion = useRef(0);
   const [exporting, setExporting] = useState(false);
+  const [creatingDraft, setCreatingDraft] = useState(false);
+  const draftRequest = useRef<{ answer: string; id: string } | null>(null);
+  const draftGuard = useRef(false);
   const sendGuard = useRef(false);
   const attempt = useRef<{
     id: string;
@@ -117,6 +125,7 @@ export default function Chat() {
     content: string;
     attachmentKey: string;
     researchMode: ResearchMode;
+    studyMode: StudyMode;
   } | null>(null);
   const [creating, setCreating] = useState(false);
   const createGuard = useRef(false);
@@ -196,6 +205,8 @@ export default function Chat() {
     setNotice("");
     setDraft("");
     setResearchMode("auto");
+    setResearchWithFiles(false);
+    setStudyMode("explain");
     setAttached([]);
     attachmentVersion.current++;
     setUploading(false);
@@ -311,7 +322,10 @@ export default function Chat() {
     event.preventDefault();
     const content = draft.trim();
     const id = conversationId;
-    const mode = cap?.web_research_available && !attached.length ? researchMode : "auto";
+    let mode: ResearchMode = "auto";
+    if (!quiz && cap?.web_research_available) {
+      mode = attached.length ? (researchWithFiles ? "on" : "off") : researchMode;
+    }
     if (
       !id ||
       !content ||
@@ -330,6 +344,7 @@ export default function Chat() {
       attempt.current.conversation !== id ||
       attempt.current.content !== content ||
       attempt.current.researchMode !== mode ||
+      attempt.current.studyMode !== studyMode ||
       attempt.current.attachmentKey !== attached.map((a) => a.id).join(",")
     )
       attempt.current = {
@@ -338,6 +353,7 @@ export default function Chat() {
         content,
         attachmentKey: attached.map((a) => a.id).join(","),
         researchMode: mode,
+        studyMode,
       };
     const question = attempt.current;
     try {
@@ -348,6 +364,7 @@ export default function Chat() {
         cap?.timeout_seconds ?? 20,
         attached.map((a) => a.id),
         question.researchMode,
+        question.studyMode,
       );
       const fresh = await loadDetail(id);
       if (
@@ -356,6 +373,7 @@ export default function Chat() {
       ) {
         setDraft("");
         setAttached([]);
+        setResearchWithFiles(false);
         attempt.current = null;
       }
       void loadList();
@@ -367,6 +385,7 @@ export default function Chat() {
         if (saved) {
           setDraft("");
           setAttached([]);
+          setResearchWithFiles(false);
           attempt.current = null;
           setError("");
           if (saved.status === "succeeded")
@@ -425,6 +444,36 @@ export default function Chat() {
       if (selected.current === id) setError(friendly(cause));
     } finally {
       setEditing(false);
+    }
+  }
+  async function createStudioDraft(answerId: string) {
+    if (!conversationId || !data || draftGuard.current) return;
+    draftGuard.current = true;
+    setCreatingDraft(true);
+    setError("");
+    if (draftRequest.current?.answer !== answerId) {
+      draftRequest.current = { answer: answerId, id: crypto.randomUUID() };
+    }
+    try {
+      const draft = await client.request("/documents", {
+        method: "POST",
+        body: JSON.stringify({
+          client_id: draftRequest.current.id,
+          title: data.conversation.title,
+          brief: "Develop the Study Chat answer into a report. Review the claims and verify the cited sources before sharing.",
+          target_pages: 3,
+          outline: ["Study Chat answer", "Analysis", "Conclusions"],
+          source_answer: { conversation_id: conversationId, message_id: answerId },
+        }),
+      }) as { id: string };
+      if (selected.current === conversationId) {
+        navigate(`/app/studio/${encodeURIComponent(draft.id)}`);
+      }
+    } catch (cause) {
+      if (selected.current === conversationId) setError(friendly(cause));
+    } finally {
+      draftGuard.current = false;
+      setCreatingDraft(false);
     }
   }
   async function exportPdf(messageId?: string) {
@@ -519,7 +568,7 @@ export default function Chat() {
               <span className="study-control-label">More</span>
             </summary>
             <div className="study-menu">
-              {data && knowledgeAccess && (
+              {data && knowledgeAccess && !quiz && (
                 <button
                   type="button"
                   disabled={sending || pending || attached.length > 0}
@@ -871,7 +920,19 @@ export default function Chat() {
                 {m.role === "user" ? (
                   <p className="question-text">{m.content}</p>
                 ) : (
-                  <Markdown text={m.content} />
+                  <Markdown
+                    text={m.content}
+                    renderPdfCitation={(attachmentId, page, label) => (
+                      <PdfCitation
+                        key={`${conversationId}/${attachmentId}/${page}`}
+                        client={client}
+                        conversationId={conversationId!}
+                        attachmentId={attachmentId}
+                        page={page}
+                        label={label}
+                      />
+                    )}
+                  />
                 )}
                 <details className="study-message-tools">
                   <summary>
@@ -884,6 +945,15 @@ export default function Chat() {
                         m.role === "user" ? "Copy question" : "Copy answer"
                       }
                     />
+                    {m.role === "assistant" && (
+                      <button
+                        type="button"
+                        disabled={creatingDraft}
+                        onClick={() => void createStudioDraft(m.id)}
+                      >
+                        {creatingDraft ? "Creating draft…" : "Create Studio draft"}
+                      </button>
+                    )}
                     {m.role === "assistant" && (
                       <button
                         type="button"
@@ -938,26 +1008,43 @@ export default function Chat() {
               maxLength={4000}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder="Ask EduMind a study question…"
+              placeholder={quiz ? "Enter a topic or answer the quiz question…" : "Ask EduMind a study question…"}
               disabled={sending || pending || !canSend}
             />
-            {cap?.web_research_available && (
+            <div className="study-research">
+              <label htmlFor="study-mode">Study mode</label>
+              <select
+                id="study-mode"
+                value={studyMode}
+                disabled={sending || pending}
+                onChange={(event) => setStudyMode(event.target.value as StudyMode)}
+              >
+                <option value="explain">Explain</option>
+                <option value="quiz">Quiz me</option>
+              </select>
+              {quiz && <small>Practice one question at a time using the topic or material you share.</small>}
+            </div>
+            {cap?.web_research_available && !quiz && (
               <div className="study-research">
                 <label htmlFor="study-research-mode">Web research</label>
                 <select
                   id="study-research-mode"
                   aria-describedby="study-research-help"
-                  value={attached.length ? "off" : researchMode}
-                  disabled={sending || pending || attached.length > 0}
-                  onChange={(event) => setResearchMode(event.target.value as ResearchMode)}
+                  value={attached.length ? (researchWithFiles ? "on" : "off") : researchMode}
+                  disabled={sending || pending || uploading}
+                  onChange={(event) => {
+                    const value = event.target.value as ResearchMode;
+                    if (attached.length) setResearchWithFiles(value === "on");
+                    else setResearchMode(value);
+                  }}
                 >
-                  <option value="auto">Auto</option>
-                  <option value="on">Always search</option>
+                  {!attached.length && <option value="auto">Auto</option>}
+                  <option value="on">{attached.length ? "Search this question" : "Always search"}</option>
                   <option value="off">Off</option>
                 </select>
                 <small id="study-research-help">
                   {attached.length
-                    ? "Web research is off for messages with attachments."
+                    ? "Search is off by default with files. If enabled, only the text you type in your question is sent to public search."
                     : "Auto sends the question text to public sources when fresh information or citations are needed."}
                 </small>
               </div>
@@ -994,6 +1081,7 @@ export default function Chat() {
                     disabled={sending || pending}
                     value={attached}
                     onChange={(items) => {
+                      setResearchWithFiles(false);
                       if (selected.current === conversationId) {
                         attachmentVersion.current++;
                         setAttached(items);

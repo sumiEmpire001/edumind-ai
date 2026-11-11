@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import timedelta
 from uuid import UUID
 
@@ -209,7 +209,9 @@ def prepare(
 ) -> Ticket:
     with Session(engine, expire_on_commit=False) as db:
         user = live_identity(db, owner, sid)
-        explicit_search = knowledge_chat.topic(data.content) is not None
+        explicit_search = (
+            data.study_mode == "explain" and knowledge_chat.topic(data.content) is not None
+        )
         if explicit_search and user.role not in {"admin", "contributor"}:
             raise HTTPException(403, "Contributor or administrator access required.")
         row = owned(db, owner, cid, lock=True)
@@ -425,8 +427,9 @@ async def submit(
     store=None,
     search=None,
 ) -> TurnResult:
-    query = knowledge_chat.topic(data.content)
-    news = query is None and not data.attachment_ids and is_live_news(data.content)
+    quiz = data.study_mode == "quiz"
+    query = None if quiz else knowledge_chat.topic(data.content)
+    news = not quiz and query is None and not data.attachment_ids and is_live_news(data.content)
     if query is not None and data.attachment_ids:
         raise HTTPException(422, "Remove attachments before searching approved knowledge.")
     ticket = await run_in_threadpool(
@@ -446,7 +449,8 @@ async def submit(
     web_requested = should_research(data.content, "auto", bool(data.attachment_ids))
     automatic = (
         knowledge_chat.automatic_topic(data.content)
-        if query is None
+        if not quiz
+        and query is None
         and not news
         and not data.attachment_ids
         and data.research_mode != "on"
@@ -485,7 +489,9 @@ async def submit(
     answer, code, sources = None, None, []
     try:
         context, web_sources, web_notice = ticket.context, "", ""
-        if should_research(data.content, data.research_mode, bool(data.attachment_ids)):
+        if quiz:
+            context = [*context[:-1], replace(context[-1], study_mode="quiz")]
+        elif should_research(data.content, data.research_mode, bool(data.attachment_ids)):
             if search:
                 context, web_sources, web_notice = await add_research(context, data.content, search)
             else:
