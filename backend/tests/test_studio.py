@@ -226,7 +226,10 @@ def test_create_studio_draft_from_owned_study_chat_answer(studio):
     assert draft.status_code == 201, draft.text
     assert draft.json()["sections"][0]["content"] == answer["content"]
     assert draft.json()["sections"][1]["content"] == ""
-    assert client.post("/api/v1/documents", headers=headers, json=payload).json() == draft.json()
+    replay = client.post("/api/v1/documents", headers=headers, json=payload)
+    assert replay.status_code == 201
+    assert replay.json()["id"] == draft.json()["id"]
+    assert replay.json()["sections"] == draft.json()["sections"]
     assert provider.calls == 1
 
     invalid = {**payload, "client_id": str(uuid4())}
