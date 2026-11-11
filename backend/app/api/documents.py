@@ -1,6 +1,7 @@
 """Owner-scoped, resumable document drafting using the existing durable chat engine."""
 
 import math
+import re
 from datetime import datetime, timedelta
 from typing import Literal
 from uuid import UUID, uuid4
@@ -25,12 +26,18 @@ from app.services.pdf_export import export
 router = APIRouter(prefix="/api/v1", tags=["document studio"])
 
 
+class AnswerSource(InputModel):
+    conversation_id: UUID
+    message_id: UUID
+
+
 class DocumentCreate(InputModel):
     client_id: UUID
     title: str = Field(min_length=1, max_length=160)
     brief: str = Field(min_length=10, max_length=1200)
     target_pages: int = Field(default=30, ge=1, le=60)
     outline: list[str] = Field(min_length=3, max_length=18)
+    source_answer: AnswerSource | None = None
 
     @field_validator("title", "brief")
     @classmethod
@@ -129,6 +136,25 @@ def create(data: DocumentCreate, request: Request, db: DB, identity: Current):
     )
     if count >= 20:
         raise HTTPException(409, "Keep at most 20 active document drafts.")
+    sections = [{"title": title, "content": "", "last_request_id": None} for title in data.outline]
+    if source := data.source_answer:
+        chat.regular_owned(db, identity.user.id, source.conversation_id)
+        answer = db.scalar(
+            select(Message).where(
+                Message.id == source.message_id,
+                Message.conversation_id == source.conversation_id,
+                Message.role == "assistant",
+            )
+        )
+        if answer is None:
+            raise HTTPException(404, "Study Chat answer not found.")
+        # Keep the source label in the report without carrying chat-private attachment IDs.
+        sections[0]["content"] = re.sub(
+            r"\[([^\]\n]+)\]\(edumind-pdf:[a-f0-9-]+/[0-9]+\)",
+            r"\1",
+            answer.content,
+            flags=re.IGNORECASE,
+        )
     conversation = Conversation(
         id=uuid4(),
         owner_id=identity.user.id,
@@ -147,9 +173,7 @@ def create(data: DocumentCreate, request: Request, db: DB, identity: Current):
         title=data.title,
         brief=data.brief,
         target_pages=data.target_pages,
-        sections=[
-            {"title": title, "content": "", "last_request_id": None} for title in data.outline
-        ],
+        sections=sections,
         revision=1,
         created_at=now(),
         updated_at=now(),

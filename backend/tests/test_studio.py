@@ -204,6 +204,44 @@ def conversation(studio):
     ).json()["id"]
 
 
+def test_create_studio_draft_from_owned_study_chat_answer(studio):
+    client, _, headers, provider = studio
+    cid = conversation(studio)
+    turn = client.post(
+        f"/api/v1/conversations/{cid}/messages",
+        headers=headers,
+        json={"request_id": str(uuid4()), "content": "Explain Newton's laws"},
+    )
+    assert turn.status_code == 201
+    question, answer = turn.json()["messages"]
+    payload = {
+        "client_id": str(uuid4()),
+        "title": "Newton's laws",
+        "brief": "Develop the answer into a study report.",
+        "target_pages": 3,
+        "outline": ["Study Chat answer", "Analysis", "Conclusions"],
+        "source_answer": {"conversation_id": cid, "message_id": answer["id"]},
+    }
+    draft = client.post("/api/v1/documents", headers=headers, json=payload)
+    assert draft.status_code == 201, draft.text
+    assert draft.json()["sections"][0]["content"] == answer["content"]
+    assert draft.json()["sections"][1]["content"] == ""
+    assert client.post("/api/v1/documents", headers=headers, json=payload).json() == draft.json()
+    assert provider.calls == 1
+
+    invalid = {**payload, "client_id": str(uuid4())}
+    invalid["source_answer"] = {"conversation_id": cid, "message_id": question["id"]}
+    assert client.post("/api/v1/documents", headers=headers, json=invalid).status_code == 404
+    register(client, email="other@example.com")
+    other = auth(login(client, email="other@example.com"))
+    assert (
+        client.post(
+            "/api/v1/documents", headers=other, json={**payload, "client_id": str(uuid4())}
+        ).status_code
+        == 404
+    )
+
+
 def test_text_attachment_context_and_pdf_export(studio):
     client, _, headers, provider = studio
     client.app.state.object_store = MemoryStore()

@@ -99,6 +99,7 @@ function setup(
       <AuthProvider client={new SessionClient()}>
         <Routes>
           <Route path="/app/chat/:conversationId" element={<Chat />} />
+          <Route path="/app/studio/:documentId" element={<h1>Studio draft</h1>} />
         </Routes>
       </AuthProvider>
     </MemoryRouter>,
@@ -308,4 +309,25 @@ it("sends quiz mode for a topic and the student's follow-up answer", async () =>
     await waitFor(() => expect(field).toHaveValue(""));
   }
   expect(modes).toEqual(["quiz", "quiz"]);
+});
+
+it("opens a Studio draft seeded from the selected saved answer", async () => {
+  const saved = setup(true, (path, init) => {
+    if (path.endsWith("/documents") && init.method === "POST") {
+      const body = JSON.parse(init.body as string);
+      expect(body.source_answer).toEqual({
+        conversation_id: cid,
+        message_id: saved.rows.at(-1)?.id,
+      });
+      return json({ id: crypto.randomUUID() }, 201);
+    }
+    return null;
+  });
+  const field = await screen.findByLabelText("Your question");
+  fireEvent.change(field, { target: { value: "Explain Newton’s laws" } });
+  fireEvent.click(screen.getByRole("button", { name: "Send question" }));
+  expect(await screen.findByRole("heading", { name: "Explanation" })).toBeInTheDocument();
+  fireEvent.click(screen.getByText("Answer actions", { exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Create Studio draft" }));
+  expect(await screen.findByRole("heading", { name: "Studio draft" })).toBeInTheDocument();
 });

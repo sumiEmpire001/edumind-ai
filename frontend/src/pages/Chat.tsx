@@ -114,6 +114,9 @@ export default function Chat() {
   const [uploading, setUploading] = useState(false);
   const attachmentVersion = useRef(0);
   const [exporting, setExporting] = useState(false);
+  const [creatingDraft, setCreatingDraft] = useState(false);
+  const draftRequest = useRef<{ answer: string; id: string } | null>(null);
+  const draftGuard = useRef(false);
   const sendGuard = useRef(false);
   const attempt = useRef<{
     id: string;
@@ -434,6 +437,36 @@ export default function Chat() {
       if (selected.current === id) setError(friendly(cause));
     } finally {
       setEditing(false);
+    }
+  }
+  async function createStudioDraft(answerId: string) {
+    if (!conversationId || !data || draftGuard.current) return;
+    draftGuard.current = true;
+    setCreatingDraft(true);
+    setError("");
+    if (draftRequest.current?.answer !== answerId) {
+      draftRequest.current = { answer: answerId, id: crypto.randomUUID() };
+    }
+    try {
+      const draft = await client.request("/documents", {
+        method: "POST",
+        body: JSON.stringify({
+          client_id: draftRequest.current.id,
+          title: data.conversation.title,
+          brief: "Develop the Study Chat answer into a report. Review the claims and verify the cited sources before sharing.",
+          target_pages: 3,
+          outline: ["Study Chat answer", "Analysis", "Conclusions"],
+          source_answer: { conversation_id: conversationId, message_id: answerId },
+        }),
+      }) as { id: string };
+      if (selected.current === conversationId) {
+        navigate(`/app/studio/${encodeURIComponent(draft.id)}`);
+      }
+    } catch (cause) {
+      if (selected.current === conversationId) setError(friendly(cause));
+    } finally {
+      draftGuard.current = false;
+      setCreatingDraft(false);
     }
   }
   async function exportPdf(messageId?: string) {
@@ -905,6 +938,15 @@ export default function Chat() {
                         m.role === "user" ? "Copy question" : "Copy answer"
                       }
                     />
+                    {m.role === "assistant" && (
+                      <button
+                        type="button"
+                        disabled={creatingDraft}
+                        onClick={() => void createStudioDraft(m.id)}
+                      >
+                        {creatingDraft ? "Creating draft…" : "Create Studio draft"}
+                      </button>
+                    )}
                     {m.role === "assistant" && (
                       <button
                         type="button"
