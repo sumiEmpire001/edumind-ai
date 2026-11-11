@@ -5,7 +5,8 @@ from uuid import UUID, uuid4
 
 import pytest
 from PIL import Image
-from pypdf import PdfReader
+from pypdf import PdfReader, PdfWriter
+from reportlab.pdfgen.canvas import Canvas
 from sqlalchemy.orm import Session
 
 from app.ai.provider import AcademicError
@@ -238,6 +239,59 @@ def test_text_attachment_context_and_pdf_export(studio):
     assert base64.b64decode(exported.json()["base64"]).startswith(b"%PDF-")
 
 
+def test_pdf_attachment_supplies_original_page_numbers_to_study_chat(studio):
+    client, _, headers, provider = studio
+    client.app.state.object_store = MemoryStore()
+    buffer = io.BytesIO()
+    pdf = Canvas(buffer)
+    pdf.showPage()
+    pdf.drawString(40, 700, "Acceleration is the rate of change of velocity.")
+    pdf.save()
+
+    cid = conversation(studio)
+    upload = client.post(
+        f"/api/v1/conversations/{cid}/attachments?filename=lecture.pdf",
+        headers={**headers, "Content-Type": "application/pdf"},
+        content=buffer.getvalue(),
+    )
+    assert upload.status_code == 201, upload.text
+    attachment = upload.json()
+    assert attachment["mime"] == "application/pdf"
+    response = client.post(
+        f"/api/v1/conversations/{cid}/messages",
+        headers=headers,
+        json={
+            "request_id": str(uuid4()),
+            "content": "Explain the definition from the lecture.",
+            "attachment_ids": [attachment["id"]],
+        },
+    )
+    assert response.status_code == 201, response.text
+    context = provider.contexts[-1][-1]
+    assert '"file": "lecture.pdf"' in context.content
+    assert '"page": 2' in context.content
+    assert "Acceleration is the rate of change of velocity." in context.content
+    assert not context.media
+
+
+@pytest.mark.parametrize("page_count, encrypted", [(1, False), (21, False), (1, True)])
+def test_pdf_attachment_rejects_scans_oversized_page_counts_and_encryption(page_count, encrypted):
+    from fastapi import HTTPException
+
+    from app.services.attachments import validate
+
+    writer = PdfWriter()
+    for _ in range(page_count):
+        writer.add_blank_page(width=200, height=200)
+    if encrypted:
+        writer.encrypt("fixture-password")
+    buffer = io.BytesIO()
+    writer.write(buffer)
+    with pytest.raises(HTTPException) as error:
+        validate("lecture.pdf", buffer.getvalue(), "application/pdf")
+    assert error.value.status_code == 422
+
+
 def test_image_attachment_reaches_provider_and_followups(studio):
     client, _, headers, provider = studio
     client.app.state.object_store = MemoryStore()
@@ -373,6 +427,7 @@ def test_document_removal_during_generation_does_not_save_answer(studio):
     "name,mime,data",
     [
         ("unsafe.svg", "image/svg+xml", b"<svg/>"),
+        ("fake.pdf", "application/pdf", b"not a PDF"),
         ("fake.png", "image/png", b"not an image"),
         ("fake.jpg", "image/png", b"not an image"),
         ("note.txt", "text/plain", b"\x00bad text"),

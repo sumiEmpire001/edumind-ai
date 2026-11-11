@@ -79,7 +79,7 @@ test("attaches an image to chat and downloads the answer PDF", async ({
   await page.getByRole("button", { name: /Create a conversation/ }).click();
   await expect(page).toHaveURL(/\/app\/chat\/[0-9a-f-]+$/);
   await page.getByLabel("Attach files", { exact: true }).click();
-  const upload = page.getByLabel("Attach an image or text note", {
+  const upload = page.getByLabel("Attach an image, note or PDF", {
     exact: true,
   });
   await expect(upload).toBeEnabled();
