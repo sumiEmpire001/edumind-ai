@@ -1113,6 +1113,7 @@ export default function Chat() {
               )}
               <button
                 type="submit"
+                aria-label={sending || pending ? "Waiting…" : "Send question"}
                 className="button"
                 disabled={
                   sending ||
@@ -1122,7 +1123,7 @@ export default function Chat() {
                   !draft.trim()
                 }
               >
-                {sending || pending ? "Waiting…" : "Send question"}
+                {sending || pending ? "Waiting…" : "Send"}
                 <span aria-hidden="true">↑</span>
               </button>
             </div>
