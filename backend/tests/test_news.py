@@ -35,6 +35,8 @@ def test_nigeria_today_only_returns_fresh_dated_headlines():
     question = "What is happening in Nigeria today?"
     assert is_live_news(question)
     assert not is_live_news("Explain Nigeria's constitutional history")
+    assert not is_live_news("What happened in the French Revolution?")
+    assert not is_live_news("What is fake news?")
     client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
     with patch("app.ai.news.httpx.AsyncClient", return_value=client):
         result = asyncio.run(live_news(question, now))

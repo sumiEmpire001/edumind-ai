@@ -25,15 +25,20 @@ FEEDS = (
 )
 NEWS_SEARCH = ("Google News", "https://news.google.com/rss/search", "news.google.com")
 MAX_FEED = 512 * 1024
-NEWS_INTENT = re.compile(
-    r"\b(?:news|headlines|current events|what(?: is|[’']s) happening|what happened)\b", re.I
-)
+NEWS_INTENT = re.compile(r"\b(?:headlines|current events|what(?: is|[’']s) happening)\b", re.I)
 
 
 def is_live_news(question):
+    if NEWS_INTENT.search(question):
+        return True
+    if re.match(r"^\s*(?:what (?:is|are)|define|explain)\b", question, re.I):
+        return False
     return bool(
-        NEWS_INTENT.search(question)
-        or re.search(r"\b(?:latest updates?|breaking|developments? today)\b", question, re.I)
+        re.search(r"\b(?:news|latest updates?|developments? today)\b", question, re.I)
+        or (
+            re.search(r"\bwhat happened\b", question, re.I)
+            and re.search(r"\b(?:today|yesterday|this week|recently)\b", question, re.I)
+        )
     )
 
 
