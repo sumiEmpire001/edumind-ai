@@ -65,6 +65,15 @@ def administrator(identity: Current) -> Identity:
 Admin = Annotated[Identity, Depends(administrator)]
 
 
+def knowledge_contributor(identity: Current) -> Identity:
+    if identity.user.role not in {"contributor", "admin"}:
+        raise HTTPException(403, "Contributor or administrator access required.")
+    return identity
+
+
+KnowledgeContributor = Annotated[Identity, Depends(knowledge_contributor)]
+
+
 def trusted_origin(request: Request) -> None:
     origin = request.headers.get("origin")
     # Browsers can omit Origin on same-origin GETs through the frontend's API proxy.

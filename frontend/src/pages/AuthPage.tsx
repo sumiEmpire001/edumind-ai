@@ -32,7 +32,7 @@ export function AuthPage({
   const [fields, setFields] = useState<Record<string, string>>({});
   const returnTo = routeState?.returnTo || "";
   const learnerDestination =
-    ["/app/account", "/app/chat", "/app/research"].includes(returnTo) ||
+    ["/app/account", "/app/chat"].includes(returnTo) ||
     /^\/app\/chat\/[0-9a-f-]{36}$/i.test(returnTo)
       ? returnTo
       : "/app";

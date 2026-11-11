@@ -16,7 +16,6 @@ test("workspace tools remain usable across responsive breakpoints", async ({
       "/app/studio",
       "/app/account",
       "/app/knowledge",
-      "/app/learning",
     ]) {
       await page.goto(route);
       await expect(page).toHaveURL(route);

@@ -1,4 +1,4 @@
-"""Dated Nigeria headlines from fixed publisher feeds."""
+"""Dated headlines from publisher feeds and topic-based news search."""
 
 import asyncio
 import re
@@ -23,20 +23,50 @@ FEEDS = (
         "premiumtimesng.com",
     ),
 )
+NEWS_SEARCH = ("Google News", "https://news.google.com/rss/search", "news.google.com")
 MAX_FEED = 512 * 1024
-COUNTRY = re.compile(r"\b(?:nigeria|nigerian)\b", re.I)
 NEWS_INTENT = re.compile(
-    r"\b(?:news|headlines|current events|what(?: is|'s) happening|what happened)\b", re.I
+    r"\b(?:news|headlines|current events|what(?: is|[’']s) happening|what happened)\b", re.I
 )
 
 
-def is_nigeria_news(question):
-    return bool(COUNTRY.search(question) and NEWS_INTENT.search(question))
+def is_live_news(question):
+    return bool(
+        NEWS_INTENT.search(question)
+        or re.search(r"\b(?:latest updates?|breaking|developments? today)\b", question, re.I)
+    )
 
 
-async def read_feed(client, feed, now, day):
+def news_topic(question):
+    topic = re.sub(
+        r"^\s*(?:(?:what(?: is|[’']s) happening|what happened)|(?:give me|show me|find))\s*",
+        "",
+        question,
+        flags=re.I,
+    )
+    topic = re.sub(
+        r"\b(?:latest|breaking|current|news|headlines|updates?|today|yesterday|right now)\b",
+        "",
+        topic,
+        flags=re.I,
+    )
+    topic = re.sub(r"^(?:(?:in|on|about|for|from|the)\s+)+", "", topic.strip(), flags=re.I)
+    return " ".join(topic.strip(" ?.!").split())[:220] or "Nigeria"
+
+
+async def read_feed(client, feed, now, day, *, topic=None):
     publisher, url, domain = feed
-    async with client.stream("GET", url) as response:
+    params = (
+        None
+        if topic is None
+        else {
+            "q": f"{topic} when:2d",
+            "hl": "en-NG",
+            "gl": "NG",
+            "ceid": "NG:en",
+        }
+    )
+    async with client.stream("GET", url, params=params) as response:
         response.raise_for_status()
         body = bytearray()
         async for part in response.aiter_bytes(chunk_size=8192):
@@ -54,7 +84,7 @@ async def read_feed(client, feed, now, day):
         ):
             continue
         categories = {entry.text.casefold() for entry in item.findall("category") if entry.text}
-        if categories.intersection({"world news", "international"}):
+        if topic is None and categories.intersection({"world news", "international"}):
             continue
         try:
             published = parsedate_to_datetime(item.findtext("pubDate") or "")
@@ -65,13 +95,14 @@ async def read_feed(client, feed, now, day):
         local = published.astimezone(WAT)
         if day is not None and local.date() != day:
             continue
+        publisher_name = " ".join((item.findtext("source") or publisher).split())[:100]
         items.append(
             (
                 published,
                 WebLink(
                     title=title,
                     url=link,
-                    publisher=publisher,
+                    publisher=publisher_name,
                     description=local.strftime("%d %b %Y, %H:%M WAT"),
                 ),
             )
@@ -79,7 +110,9 @@ async def read_feed(client, feed, now, day):
     return items
 
 
-async def nigeria_news(question, now=None):
+async def live_news(question, now=None):
+    topic = news_topic(question)
+    local = topic.casefold() in {"nigeria", "nigerian"}
     now = now or datetime.now(UTC)
     local_day = now.astimezone(WAT).date()
     day = (
@@ -94,9 +127,10 @@ async def nigeria_news(question, now=None):
         follow_redirects=True,
         headers={"User-Agent": "EduMindAI/1.0 (https://github.com/sumiEmpire001/edumind-ai)"},
     ) as client:
-        batches = await asyncio.gather(
-            *(read_feed(client, feed, now, day) for feed in FEEDS), return_exceptions=True
-        )
+        requests = [read_feed(client, NEWS_SEARCH, now, day, topic=topic)]
+        if local:
+            requests.extend(read_feed(client, feed, now, day) for feed in FEEDS)
+        batches = await asyncio.gather(*requests, return_exceptions=True)
     items = []
     for batch in batches:
         if isinstance(batch, list):
@@ -113,9 +147,9 @@ async def nigeria_news(question, now=None):
         if len(links) == 6:
             break
     answer = (
-        f"Recent headlines from Nigerian newsrooms for {day.strftime('%d %B %Y')} (WAT)."
+        f"Recent headlines for {day.strftime('%d %B %Y')} (WAT)."
         if links and day
-        else "Recent headlines from Nigerian newsrooms."
+        else "Recent headlines from connected news sources."
         if links
         else "I couldn’t verify headlines for that period from the connected news feeds."
     )
@@ -124,14 +158,14 @@ async def nigeria_news(question, now=None):
 
 async def news_reply(question, search, mode):
     if mode == "off":
-        return "Turn on Web research to check recent Nigeria headlines."
+        return "Turn on Web research to check recent headlines."
     if not search:
-        return "The live Nigeria news feeds are temporarily unavailable."
+        return "The live news feeds are temporarily unavailable."
     try:
         async with asyncio.timeout(8):
             result = await search(question)
     except (TimeoutError, AcademicError):
-        return "I couldn’t reach the Nigeria news feeds. Try again shortly."
+        return "I couldn’t reach the live news feeds. Try again shortly."
     except HTTPException as exc:
         if exc.status_code != 429:
             raise
