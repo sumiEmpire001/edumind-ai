@@ -113,7 +113,7 @@ export function AuthPage({
             {admin
               ? "Review contributed resources and monitor the EduMind Knowledge API."
               : registering
-                ? "Create an account and make room for your next moment of understanding."
+                ? "Use Study Chat to explore a topic and Document Studio to draft and export your work."
                 : "Pick up where curiosity left off. Your personal workspace is right here."}
           </p>
           <div className="auth-quote">
@@ -130,7 +130,7 @@ export function AuthPage({
             {admin
               ? "Restricted access"
               : registering
-                ? "A new beginning"
+                ? "Student account"
                 : "Good to see you"}
           </p>
           <h2 id="form-title">
@@ -144,7 +144,7 @@ export function AuthPage({
             {admin
               ? "Enter the email and password of your administrator account."
               : registering
-                ? "Start with a few details about you."
+                ? "Create a student account to get started. You can apply to contribute from your workspace."
                 : "Enter your details to continue."}
           </p>
           {routeState?.notice && !registering && (

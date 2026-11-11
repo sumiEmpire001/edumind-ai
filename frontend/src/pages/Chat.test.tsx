@@ -2,9 +2,9 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { expect, it, vi } from "vitest";
 import { AuthProvider } from "../auth/AuthContext";
-import { SessionClient } from "../auth/session";
+import { SessionClient, type Role } from "../auth/session";
 import Chat from "./Chat";
-import { bundle, json, pathOf } from "../test-fixtures";
+import { bundle, json, pathOf, user } from "../test-fixtures";
 const cid = "e94f285d-5bb8-46bf-bfd7-f7d94bdab421";
 const created = "2026-10-30T12:00:00Z";
 const conversation = {
@@ -19,6 +19,7 @@ function setup(
     path: string,
     init: RequestInit,
   ) => Response | Promise<Response> | null,
+  role: Role = "student",
 ) {
   const rows: {
     id: string;
@@ -42,7 +43,7 @@ function setup(
       const custom = mutate?.(path, init);
       if (custom) return await custom;
       if (path.endsWith("/csrf")) return json({ csrf_token: "test-csrf" });
-      if (path.endsWith("/refresh")) return json(bundle());
+      if (path.endsWith("/refresh")) return json({ ...bundle(), user: { ...user, role } });
       if (path.endsWith("/capabilities"))
         return json({
           available,
@@ -273,7 +274,7 @@ it("can search approved knowledge in chat when the AI provider is unavailable", 
   setup(false, (path, init) => {
     if (path.endsWith("/messages")) sent.push(JSON.parse(init.body as string).content);
     return null;
-  });
+  }, "contributor");
   const field = await screen.findByLabelText("Your question");
   expect(field).toBeDisabled();
   fireEvent.click(screen.getByLabelText("Chat options"));
@@ -283,4 +284,11 @@ it("can search approved knowledge in chat when the AI provider is unavailable", 
   fireEvent.change(field, { target: { value: "/knowledge Sutterby" } });
   fireEvent.click(screen.getByRole("button", { name: "Send question" }));
   await waitFor(() => expect(sent).toEqual(["/knowledge Sutterby"]));
+});
+
+it("keeps the approved knowledge search out of student chat options", async () => {
+  setup();
+  await screen.findByLabelText("Your question");
+  fireEvent.click(screen.getByLabelText("Chat options"));
+  expect(screen.queryByText("Search approved knowledge")).not.toBeInTheDocument();
 });
