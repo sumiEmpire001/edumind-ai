@@ -161,7 +161,7 @@ def remove(db: Session, owner: UUID, cid: UUID, trace: str) -> None:
         db.commit()
 
 
-def live_identity(db: Session, owner: UUID, sid: UUID) -> None:
+def live_identity(db: Session, owner: UUID, sid: UUID) -> User:
     user, session = db.get(User, owner), db.get(AuthSession, sid)
     if (
         not user
@@ -172,6 +172,7 @@ def live_identity(db: Session, owner: UUID, sid: UUID) -> None:
         or utc(session.expires_at) <= now()
     ):
         raise unauthorized()
+    return user
 
 
 def result(db: Session, request: ChatRequest, replayed: bool) -> TurnResult:
@@ -207,7 +208,10 @@ def prepare(
     store=None,
 ) -> Ticket:
     with Session(engine, expire_on_commit=False) as db:
-        live_identity(db, owner, sid)
+        user = live_identity(db, owner, sid)
+        explicit_search = knowledge_chat.topic(data.content) is not None
+        if explicit_search and user.role not in {"admin", "contributor"}:
+            raise HTTPException(403, "Contributor or administrator access required.")
         row = owned(db, owner, cid, lock=True)
         existing = db.get(ChatRequest, data.request_id)
         if existing:
@@ -241,7 +245,7 @@ def prepare(
         # Completed pairs only; never mix owners/conversations, pending work, or failed questions.
         previous = (
             []
-            if knowledge_chat.topic(data.content) is not None
+            if explicit_search
             else list(
                 db.scalars(
                     select(Message)

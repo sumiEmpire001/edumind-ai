@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { canAccessKnowledgeApi, roleLabels } from "../auth/roles";
 import { errorMessage } from "../api/client";
 import { Brand } from "./Brand";
 import { Icon } from "./Icon";
@@ -11,6 +12,8 @@ export function WorkspaceLayout() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   if (!user) return null;
+  const knowledgeAccess = canAccessKnowledgeApi(user.role);
+  const closeMenu = () => setOpen(false);
   async function logout() {
     if (busy) return;
     setBusy(true);
@@ -47,39 +50,32 @@ export function WorkspaceLayout() {
           }
         }}
       >
-        <nav
-          id="workspace-nav"
-          aria-label="Workspace navigation"
-          onKeyDown={(e) => {
-            if (e.key === "Escape" && open) {
-              setOpen(false);
-              toggle.current?.focus();
-            }
-          }}
-        >
-          <p className="nav-caption">YOUR WORKSPACE</p>
-          <NavLink to="/app" end onClick={() => setOpen(false)}>
+        <nav id="workspace-nav" aria-label="Workspace navigation">
+          <p className="nav-caption">Study workspace</p>
+          <NavLink to="/app" end onClick={closeMenu}>
             <Icon name="home" /> Overview
           </NavLink>
-          <NavLink to="/app/chat" onClick={() => setOpen(false)}>
+          <NavLink to="/app/chat" onClick={closeMenu}>
             <Icon name="chat" /> Study chat
           </NavLink>
-          <NavLink to="/app/knowledge" onClick={() => setOpen(false)}>
-            <Icon name="book" /> Knowledge library
-          </NavLink>
-          {(user.role === "admin" || user.role === "contributor") && (
-            <NavLink to="/app/learning" onClick={() => setOpen(false)}>
-              <Icon name="book" /> Knowledge API
-            </NavLink>
-          )}
-          <NavLink to="/app/studio" onClick={() => setOpen(false)}>
+          <NavLink to="/app/studio" onClick={closeMenu}>
             <Icon name="document" /> Document Studio
           </NavLink>
-          <NavLink to="/app/account" onClick={() => setOpen(false)}>
+          <p className="nav-caption">Contributions</p>
+          <NavLink to="/app/knowledge" onClick={closeMenu}>
+            <Icon name="book" /> {knowledgeAccess ? "Knowledge library" : "Become a contributor"}
+          </NavLink>
+          {knowledgeAccess && (
+            <NavLink to="/app/learning" onClick={closeMenu}>
+              <Icon name="search" /> Knowledge API
+            </NavLink>
+          )}
+          <p className="nav-caption">Account</p>
+          <NavLink to="/app/account" onClick={closeMenu}>
             <Icon name="user" /> My account
           </NavLink>
           {user.role === "admin" && (
-            <NavLink to="/app/admin" onClick={() => setOpen(false)}>
+            <NavLink to="/app/admin" onClick={closeMenu}>
               <Icon name="user" /> Administration
             </NavLink>
           )}
@@ -91,13 +87,7 @@ export function WorkspaceLayout() {
             </span>
             <div>
               <strong>{user.full_name}</strong>
-              <span>
-                {user.role === "admin"
-                  ? "Administrator"
-                  : user.role === "contributor"
-                    ? "Contributor"
-                    : "Student"}
-              </span>
+              <span>{roleLabels[user.role]}</span>
             </div>
           </div>
           <button

@@ -307,16 +307,22 @@ def test_study_chat_checks_index_for_natural_document_question(knowledge):
     assert run_one(k.engine, k.store, None)
     provider = FixtureProvider()
     k.client.app.state.academic_provider = provider
+    register(k.client, email="reader@example.com")
+    student = auth(login(k.client, email="reader@example.com"))
     cid = str(uuid4())
     assert (
-        k.client.post(
-            "/api/v1/conversations", headers=k.contributor, json={"client_id": cid}
-        ).status_code
+        k.client.post("/api/v1/conversations", headers=student, json={"client_id": cid}).status_code
         == 201
     )
+    route = f"/api/v1/conversations/{cid}/messages"
+    for command in ("/knowledge Sutterby", "Search approved knowledge for Sutterby"):
+        denied = k.client.post(
+            route, headers=student, json={"request_id": str(uuid4()), "content": command}
+        )
+        assert denied.status_code == 403
     response = k.client.post(
-        f"/api/v1/conversations/{cid}/messages",
-        headers=k.contributor,
+        route,
+        headers=student,
         json={"request_id": str(uuid4()), "content": "What is Sutterby Nanofluid"},
     )
     assert response.status_code == 201, response.text

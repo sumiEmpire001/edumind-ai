@@ -9,6 +9,7 @@ import {
   type FormEvent,
 } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { canAccessKnowledgeApi } from "../auth/roles";
 import { useAuth } from "../auth/AuthContext";
 import { ApiError, errorMessage } from "../api/client";
 import {
@@ -75,7 +76,8 @@ function mergeDetails(
 export default function Chat() {
   const { conversationId } = useParams();
   const navigate = useNavigate();
-  const { client } = useAuth();
+  const { client, user } = useAuth();
+  const knowledgeAccess = canAccessKnowledgeApi(user?.role);
   const api = useMemo(() => new ChatApi(client), [client]);
   const selected = useRef(conversationId);
   selected.current = conversationId;
@@ -101,7 +103,7 @@ export default function Chat() {
   const [notice, setNotice] = useState("");
   const [pollFailed, setPollFailed] = useState(false);
   const [draft, setDraft] = useState("");
-  const canSend = cap?.available || /^\/knowledge\b/i.test(draft.trimStart());
+  const canSend = cap?.available || (knowledgeAccess && /^\/knowledge\b/i.test(draft.trimStart()));
   const [researchMode, setResearchMode] = useState<ResearchMode>("auto");
   const [sending, setSending] = useState(false);
   const [attached, setAttached] = useState<Attachment[]>([]);
@@ -517,7 +519,7 @@ export default function Chat() {
               <span className="study-control-label">More</span>
             </summary>
             <div className="study-menu">
-              {data && (
+              {data && knowledgeAccess && (
                 <button
                   type="button"
                   disabled={sending || pending || attached.length > 0}
@@ -843,7 +845,7 @@ export default function Chat() {
                       : m.provider === "verification"
                         ? "Verification response"
                         : m.provider === "knowledge"
-                          ? "Knowledge API"
+                          ? "EduMind library"
                           : "EduMind"}
                   </strong>
                 </div>
