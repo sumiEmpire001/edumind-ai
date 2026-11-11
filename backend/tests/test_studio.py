@@ -272,6 +272,18 @@ def test_pdf_attachment_supplies_original_page_numbers_to_study_chat(studio):
     assert '"page": 2' in context.content
     assert "Acceleration is the rate of change of velocity." in context.content
     assert not context.media
+    assert attachment["id"] in context.content
+
+    path = f"/api/v1/conversations/{cid}/attachments/{attachment['id']}/pages"
+    assert client.get(f"{path}/2", headers=headers).json() == {
+        "filename": "lecture.pdf",
+        "page": 2,
+        "text": "Acceleration is the rate of change of velocity.",
+    }
+    assert client.get(f"{path}/1", headers=headers).status_code == 404
+    assert client.get(f"{path}/2").status_code == 401
+    wrong_cid = conversation(studio)
+    assert client.get(f"{path.replace(cid, wrong_cid)}/2", headers=headers).status_code == 404
 
 
 @pytest.mark.parametrize("page_count, encrypted", [(1, False), (21, False), (1, True)])

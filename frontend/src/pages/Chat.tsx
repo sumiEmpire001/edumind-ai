@@ -25,6 +25,7 @@ import { CopyButton } from "../chat/CopyButton";
 import {
   Attachments,
   ImagePreview,
+  PdfCitation,
   type Attachment,
 } from "../chat/Attachments";
 import { downloadPdf } from "../studio/download";
@@ -871,7 +872,19 @@ export default function Chat() {
                 {m.role === "user" ? (
                   <p className="question-text">{m.content}</p>
                 ) : (
-                  <Markdown text={m.content} />
+                  <Markdown
+                    text={m.content}
+                    renderPdfCitation={(attachmentId, page, label) => (
+                      <PdfCitation
+                        key={`${conversationId}/${attachmentId}/${page}`}
+                        client={client}
+                        conversationId={conversationId!}
+                        attachmentId={attachmentId}
+                        page={page}
+                        label={label}
+                      />
+                    )}
+                  />
                 )}
                 <details className="study-message-tools">
                   <summary>

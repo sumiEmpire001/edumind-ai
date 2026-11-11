@@ -139,7 +139,9 @@ def attach_turn(db, owner, cid, content, ids, store, request_id=None):
             if row.mime == "text/plain":
                 excerpts.append(f"Personal note {row.filename}:\n" + raw.decode("utf-8"))
             elif row.mime == PDF_MIME:
-                excerpts.append({"file": row.filename, "pages": pdf_pages(raw)})
+                excerpts.append(
+                    {"attachment_id": str(row.id), "file": row.filename, "pages": pdf_pages(raw)}
+                )
             else:
                 media.append(MediaPart(row.mime, raw))
         except HTTPException:

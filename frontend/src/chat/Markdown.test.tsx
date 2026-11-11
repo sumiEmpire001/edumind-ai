@@ -63,3 +63,19 @@ it("reports clipboard denial rather than claiming success", async () => {
   ).toBeInTheDocument();
   expect(screen.queryByText("Copied")).not.toBeInTheDocument();
 });
+
+it("renders only valid private PDF citations through the provided control", () => {
+  const id = "24fa6044-8d84-4eb6-bd22-06379c1a64ef";
+  const renderCitation = vi.fn((id: string, page: number) => (
+    <button type="button">{id} page {page}</button>
+  ));
+  render(
+    <Markdown
+      text={`[Lecture](edumind-pdf:${id}/2) [Invalid](edumind-pdf:${id}/99)`}
+      renderPdfCitation={renderCitation}
+    />,
+  );
+  expect(screen.getByRole("button", { name: `${id} page 2` })).toBeInTheDocument();
+  expect(renderCitation).toHaveBeenCalledTimes(1);
+  expect(screen.queryByRole("link")).not.toBeInTheDocument();
+});

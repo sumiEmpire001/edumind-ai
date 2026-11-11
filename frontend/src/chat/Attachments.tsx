@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { errorMessage } from "../api/client";
 import type { SessionClient } from "../auth/session";
 import "./Attachments.css";
@@ -71,6 +71,63 @@ export function ImagePreview({
       )}
       {error && <small role="status">{error}</small>}
     </div>
+  );
+}
+
+export function PdfCitation({
+  client,
+  conversationId,
+  attachmentId,
+  page,
+  label,
+}: {
+  client: SessionClient;
+  conversationId: string;
+  attachmentId: string;
+  page: number;
+  label: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [excerpt, setExcerpt] = useState<{ filename: string; text: string }>();
+  const [error, setError] = useState("");
+  async function show() {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    setOpen(true);
+    setError("");
+    if (excerpt || loading) return;
+    setLoading(true);
+    try {
+      const result = await client.request(
+        `/conversations/${conversationId}/attachments/${attachmentId}/pages/${page}`,
+      ) as { filename: string; text: string };
+      setExcerpt(result);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <span className="pdf-citation">
+      <button type="button" aria-expanded={open} onClick={() => void show()}>
+        {label}
+      </button>
+      {open && (
+        <span className="pdf-citation-excerpt" role="status">
+          {excerpt ? (
+            <>
+              <strong>{excerpt.filename} · Page {page}</strong>
+              <span>{excerpt.text}</span>
+            </>
+          ) : error || "Loading cited page…"}
+        </span>
+      )}
+    </span>
   );
 }
 
