@@ -37,10 +37,8 @@ SEARCH_PREFIX = re.compile(
 
 
 def should_research(question: str, mode: str, has_attachments: bool) -> bool:
-    return (
-        not has_attachments
-        and mode != "off"
-        and (mode == "on" or bool(RESEARCH_INTENT.search(question)))
+    return mode == "on" or (
+        mode == "auto" and not has_attachments and bool(RESEARCH_INTENT.search(question))
     )
 
 

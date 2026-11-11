@@ -109,6 +109,7 @@ export default function Chat() {
   const quiz = studyMode === "quiz";
   const canSend = cap?.available || (!quiz && knowledgeAccess && /^\/knowledge\b/i.test(draft.trimStart()));
   const [researchMode, setResearchMode] = useState<ResearchMode>("auto");
+  const [researchWithFiles, setResearchWithFiles] = useState(false);
   const [sending, setSending] = useState(false);
   const [attached, setAttached] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -204,6 +205,7 @@ export default function Chat() {
     setNotice("");
     setDraft("");
     setResearchMode("auto");
+    setResearchWithFiles(false);
     setStudyMode("explain");
     setAttached([]);
     attachmentVersion.current++;
@@ -320,7 +322,10 @@ export default function Chat() {
     event.preventDefault();
     const content = draft.trim();
     const id = conversationId;
-    const mode = !quiz && cap?.web_research_available && !attached.length ? researchMode : "auto";
+    let mode: ResearchMode = "auto";
+    if (!quiz && cap?.web_research_available) {
+      mode = attached.length ? (researchWithFiles ? "on" : "off") : researchMode;
+    }
     if (
       !id ||
       !content ||
@@ -368,6 +373,7 @@ export default function Chat() {
       ) {
         setDraft("");
         setAttached([]);
+        setResearchWithFiles(false);
         attempt.current = null;
       }
       void loadList();
@@ -379,6 +385,7 @@ export default function Chat() {
         if (saved) {
           setDraft("");
           setAttached([]);
+          setResearchWithFiles(false);
           attempt.current = null;
           setError("");
           if (saved.status === "succeeded")
@@ -1023,17 +1030,21 @@ export default function Chat() {
                 <select
                   id="study-research-mode"
                   aria-describedby="study-research-help"
-                  value={attached.length ? "off" : researchMode}
-                  disabled={sending || pending || attached.length > 0}
-                  onChange={(event) => setResearchMode(event.target.value as ResearchMode)}
+                  value={attached.length ? (researchWithFiles ? "on" : "off") : researchMode}
+                  disabled={sending || pending || uploading}
+                  onChange={(event) => {
+                    const value = event.target.value as ResearchMode;
+                    if (attached.length) setResearchWithFiles(value === "on");
+                    else setResearchMode(value);
+                  }}
                 >
-                  <option value="auto">Auto</option>
-                  <option value="on">Always search</option>
+                  {!attached.length && <option value="auto">Auto</option>}
+                  <option value="on">{attached.length ? "Search this question" : "Always search"}</option>
                   <option value="off">Off</option>
                 </select>
                 <small id="study-research-help">
                   {attached.length
-                    ? "Web research is off for messages with attachments."
+                    ? "Search is off by default with files. If enabled, only the text you type in your question is sent to public search."
                     : "Auto sends the question text to public sources when fresh information or citations are needed."}
                 </small>
               </div>
@@ -1070,6 +1081,7 @@ export default function Chat() {
                     disabled={sending || pending}
                     value={attached}
                     onChange={(items) => {
+                      setResearchWithFiles(false);
                       if (selected.current === conversationId) {
                         attachmentVersion.current++;
                         setAttached(items);

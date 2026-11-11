@@ -1,6 +1,7 @@
 import base64
 import io
 from datetime import timedelta
+from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 from xml.etree import ElementTree
 from zipfile import ZipFile
@@ -12,6 +13,7 @@ from reportlab.pdfgen.canvas import Canvas
 from sqlalchemy.orm import Session
 
 from app.ai.provider import AcademicError
+from app.ai.research import ResearchResult, WebLink
 from app.auth.crypto import now
 from app.models.studio import StudioDocument
 from app.services.pdf_export import render
@@ -296,6 +298,55 @@ def test_text_attachment_context_and_pdf_export(studio):
     exported = client.post(f"/api/v1/conversations/{cid}/export", headers=headers, json={})
     assert exported.status_code == 200
     assert base64.b64decode(exported.json()["base64"]).startswith(b"%PDF-")
+
+
+@pytest.mark.parametrize("mode", ["auto", "off", "on"])
+def test_web_research_with_attachments_requires_opt_in_and_sends_only_question(studio, mode):
+    client, _, headers, provider = studio
+    client.app.state.object_store = MemoryStore()
+    search = AsyncMock(
+        return_value=ResearchResult(
+            answer="",
+            sources=[
+                WebLink(
+                    title="Public study guide",
+                    url="https://example.org/study-guide",
+                    publisher="Source",
+                    description="Public evidence about acceleration.",
+                )
+            ],
+            suggestions=[],
+        )
+    )
+    client.app.state.research = search
+    cid = conversation(studio)
+    upload = client.post(
+        f"/api/v1/conversations/{cid}/attachments?filename=private-notes.txt",
+        headers={**headers, "Content-Type": "text/plain"},
+        content=b"Private lecture excerpt: an example with a mass of 2 kg.",
+    )
+    assert upload.status_code == 201
+    question = "What do the latest studies say about teaching acceleration?"
+    turn = client.post(
+        f"/api/v1/conversations/{cid}/messages",
+        headers=headers,
+        json={
+            "request_id": str(uuid4()),
+            "content": question,
+            "attachment_ids": [upload.json()["id"]],
+            "research_mode": mode,
+        },
+    )
+    assert turn.status_code == 201, turn.text
+    context = provider.contexts[-1][-1]
+    assert "Private lecture excerpt" in context.content
+    if mode == "on":
+        search.assert_awaited_once_with(question)
+        assert "Public evidence about acceleration" in context.web_context
+        assert "https://example.org/study-guide" in turn.json()["messages"][-1]["content"]
+    else:
+        search.assert_not_awaited()
+        assert not context.web_context
 
 
 def test_pdf_attachment_supplies_original_page_numbers_to_study_chat(studio):
