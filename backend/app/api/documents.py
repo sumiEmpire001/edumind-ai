@@ -22,6 +22,7 @@ from app.schemas.identity import InputModel
 from app.security.rate_limit import consume
 from app.services import chat
 from app.services.pdf_export import export
+from app.services.word_export import export_word
 
 router = APIRouter(prefix="/api/v1", tags=["document studio"])
 
@@ -393,6 +394,20 @@ def export_document(did: UUID, request: Request, db: DB, identity: Current):
         f"Editable draft: {drafted} of {len(row.sections)} sections contain text. "
         f"Target: {row.target_pages} pages; actual layout may differ. Verify facts and references.",
     )
+
+
+@router.post("/documents/{did}/export-word")
+def export_document_word(did: UUID, request: Request, db: DB, identity: Current):
+    row = owned(db, identity.user.id, did)
+    consume(request, "word-export", str(identity.user.id), 15, 3600)
+    try:
+        return export_word(
+            row.title,
+            identity.user.full_name,
+            [(s["title"], s["content"]) for s in row.sections],
+        )
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
 
 
 @router.post("/conversations/{cid}/export")

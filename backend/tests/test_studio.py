@@ -2,6 +2,8 @@ import base64
 import io
 from datetime import timedelta
 from uuid import UUID, uuid4
+from xml.etree import ElementTree
+from zipfile import ZipFile
 
 import pytest
 from PIL import Image
@@ -65,6 +67,7 @@ def test_draft_revision_owner_isolation_and_manual_pdf(studio):
     assert client.delete(f"/api/v1/conversations/{hidden}", headers=headers).status_code == 404
     path = f"/api/v1/documents/{doc['id']}"
     assert client.get("/api/v1/documents", headers=headers).json()[0]["id"] == doc["id"]
+    assert client.post(path + "/export-word", headers=headers).status_code == 422
     edited = client.patch(
         path + "/sections/0",
         headers=headers,
@@ -91,9 +94,24 @@ def test_draft_revision_owner_isolation_and_manual_pdf(studio):
     extracted = "\n".join(page.extract_text() for page in pdf.pages)
     assert "Café" in extracted and "α" in extracted and "Contents" in extracted
     assert len(pdf.pages) == payload["page_count"]
+    word = client.post(path + "/export-word", headers=headers)
+    assert word.status_code == 200, word.text
+    payload = word.json()
+    assert payload["media_type"].endswith("wordprocessingml.document")
+    with ZipFile(io.BytesIO(base64.b64decode(payload["base64"]))) as package:
+        assert package.testzip() is None
+        xml = ElementTree.fromstring(package.read("word/document.xml"))
+        text = [node.text for node in xml.findall(".//{*}t")]
+    assert "Café and force" in text
+    assert "Force is measured in newtons. α = 2." in text
     register(client, email="other@example.com")
     other = auth(login(client, email="other@example.com"))
-    for method, suffix in [("get", ""), ("post", "/export"), ("delete", "")]:
+    for method, suffix in [
+        ("get", ""),
+        ("post", "/export"),
+        ("post", "/export-word"),
+        ("delete", ""),
+    ]:
         assert getattr(client, method)(path + suffix, headers=other).status_code == 404
 
 
