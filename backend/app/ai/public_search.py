@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 import httpx
 
-from app.ai.news import is_nigeria_news, nigeria_news
+from app.ai.news import is_live_news, live_news
 from app.ai.provider import AcademicError
 from app.ai.research import ResearchResult, WebLink
 
@@ -64,8 +64,8 @@ async def crossref(client: httpx.AsyncClient, question: str) -> list[WebLink]:
 
 
 async def search_public_sources(question: str) -> ResearchResult:
-    if is_nigeria_news(question):
-        return await nigeria_news(question)
+    if is_live_news(question):
+        return await live_news(question)
     async with httpx.AsyncClient(
         timeout=6, headers={"User-Agent": USER_AGENT, "Accept": "application/json"}
     ) as client:

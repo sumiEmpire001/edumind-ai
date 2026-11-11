@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.auth.crypto import now
-from app.auth.dependencies import DB, Admin, Current, trusted_origin
+from app.auth.dependencies import DB, Admin, Current, KnowledgeContributor, trusted_origin
 from app.knowledge.learning import KnowledgeQueryTooBroad, question_digest, search, statistics
 from app.models.learning import LearningExample, LearningQuery
 from app.schemas.identity import InputModel
@@ -97,7 +97,7 @@ def save_pending(db, request, owner_id, question, answer="", evidence=""):
 
 
 @router.get("/learning/examples")
-def examples(db: DB, current: Current, offset: int = Query(0, ge=0)):
+def examples(db: DB, current: KnowledgeContributor, offset: int = Query(0, ge=0)):
     q = select(LearningExample)
     if current.user.role != "admin":
         q = q.where(LearningExample.owner_id == current.user.id)
@@ -133,7 +133,7 @@ def review(eid: UUID, data: Review, request: Request, db: DB, admin: Admin):
 
 
 @router.post("/learning/query", dependencies=[Depends(trusted_origin)])
-def query(data: Question, request: Request, db: DB, current: Current):
+def query(data: Question, request: Request, db: DB, current: KnowledgeContributor):
     consume(request, "learning-query", str(current.user.id), 30, 60)
     started = time.perf_counter()
     try:

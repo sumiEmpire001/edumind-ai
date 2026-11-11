@@ -22,7 +22,10 @@ from tests.test_knowledge import knowledge as knowledge
 
 def actors(api):
     client, engine, _ = api
-    register(client)
+    member = UUID(register(client).json()["id"])
+    with Session(engine) as db:
+        db.get(User, member).role = "contributor"
+        db.commit()
     student = auth(login(client))
     aid = UUID(register(client, email="admin@example.com").json()["id"])
     with Session(engine) as db:
@@ -129,7 +132,13 @@ def test_export_holdout_and_ownership(api):
     assert client.get("/api/v1/learning/examples").status_code == 401
     register(client, email="other@example.com")
     other = auth(login(client, email="other@example.com"))
-    assert client.get("/api/v1/learning/examples", headers=other).json() == []
+    assert client.get("/api/v1/learning/examples", headers=other).status_code == 403
+    assert (
+        client.post(
+            "/api/v1/learning/query", headers=other, json={"question": "circuits"}
+        ).status_code
+        == 403
+    )
 
 
 def test_only_current_approved_document_versions(knowledge):

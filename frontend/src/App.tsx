@@ -1,6 +1,6 @@
 import { lazy, Suspense, useLayoutEffect } from "react";
-import { Link, Route, Routes, useLocation } from "react-router-dom";
-import { AuthProvider } from "./auth/AuthContext";
+import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { SessionClient } from "./auth/session";
 import { SessionGate } from "./components/SessionGate";
 import { WorkspaceLayout } from "./components/WorkspaceLayout";
@@ -10,7 +10,6 @@ import { Overview } from "./pages/Overview";
 import { Account } from "./pages/Account";
 import { AdminWorkspace } from "./pages/AdminWorkspace";
 import { RouteBoundary } from "./components/RouteBoundary";
-const Research = lazy(() => import("./pages/Research"));
 const Learning = lazy(() => import("./pages/Learning"));
 const Knowledge = lazy(() => import("./pages/Knowledge"));
 const Chat = lazy(() => import("./pages/Chat"));
@@ -32,6 +31,18 @@ function ChatRoute() {
   );
 }
 
+function KnowledgeApiRoute() {
+  const { user } = useAuth();
+  if (user?.role !== "admin" && user?.role !== "contributor") {
+    return <Navigate to="/app" replace />;
+  }
+  return (
+    <Suspense fallback={<p role="status">Opening knowledge API…</p>}>
+      <Learning />
+    </Suspense>
+  );
+}
+
 function RouteEffects() {
   const { pathname, hash } = useLocation();
   // Move route focus before paint so a delayed effect cannot steal focus from
@@ -47,7 +58,6 @@ function RouteEffects() {
       "/app/account": "My account",
       "/app/knowledge": "Knowledge library",
       "/app/learning": "Knowledge API",
-      "/app/research": "Web research",
       "/app/studio": "Document Studio",
     };
     document.title = `${titles[pathname] || (pathname.startsWith("/app/chat") ? "Study chat" : pathname.startsWith("/app/studio/") ? "Document Studio" : "Page not found")} · EduMind AI`;
@@ -88,26 +98,10 @@ export default function App({ client }: { client?: SessionClient }) {
                 </Suspense>
               }
             />
-            <Route
-              path="learning"
-              element={
-                <Suspense
-                  fallback={<p role="status">Opening knowledge API…</p>}
-                >
-                  <Learning />
-                </Suspense>
-              }
-            />
+            <Route path="learning" element={<KnowledgeApiRoute />} />
             <Route path="account" element={<Account />} />
             <Route path="admin" element={<AdminWorkspace />} />
-            <Route
-              path="research"
-              element={
-                <Suspense fallback={<p role="status">Opening web research…</p>}>
-                  <Research />
-                </Suspense>
-              }
-            />
+            <Route path="research" element={<Navigate to="/app/chat" replace />} />
             <Route
               path="studio"
               element={

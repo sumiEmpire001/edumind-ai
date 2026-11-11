@@ -1,14 +1,13 @@
 import { test, expect } from "@playwright/test";
 import { randomUUID } from "node:crypto";
-import { create, login, signout } from "./helpers";
+import { create, login, menu, signout } from "./helpers";
 
 test("a nominated question becomes searchable only after a verified admin review", async ({
   page,
 }) => {
-  const email = await create(page);
   const key = `acceleration${randomUUID().replaceAll("-", "")}`;
   const question = `Explain ${key}`;
-  await login(page, email);
+  await login(page, "contributor-e2e@example.com");
   await expect(page).toHaveURL(/\/app$/);
   await page.goto("/app/learning");
   await expect(
@@ -59,4 +58,15 @@ test("a nominated question becomes searchable only after a verified admin review
   await expect(
     page.getByRole("region", { name: "API progress" }),
   ).toContainText("not configured");
+});
+
+
+test("students cannot open the Knowledge API page", async ({ page }) => {
+  const email = await create(page);
+  await login(page, email);
+  await expect(page).toHaveURL(/\/app$/);
+  await page.goto("/app/learning");
+  await expect(page).toHaveURL(/\/app$/);
+  await menu(page);
+  await expect(page.getByRole("link", { name: "Knowledge API" })).toHaveCount(0);
 });

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app.ai.chat_research import add_research, should_research
-from app.ai.news import is_nigeria_news, news_reply
+from app.ai.news import is_live_news, news_reply
 from app.ai.provider import AcademicError, AcademicProvider, Turn
 from app.auth.crypto import now, utc
 from app.auth.dependencies import unauthorized
@@ -422,7 +422,7 @@ async def submit(
     search=None,
 ) -> TurnResult:
     query = knowledge_chat.topic(data.content)
-    news = query is None and not data.attachment_ids and is_nigeria_news(data.content)
+    news = query is None and not data.attachment_ids and is_live_news(data.content)
     if query is not None and data.attachment_ids:
         raise HTTPException(422, "Remove attachments before searching approved knowledge.")
     ticket = await run_in_threadpool(
