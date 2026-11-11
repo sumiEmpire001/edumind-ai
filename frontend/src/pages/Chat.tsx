@@ -997,11 +997,13 @@ export default function Chat() {
           <form
             className="chat-composer"
             onSubmit={(event) => {
-              if (attachmentTools.current) attachmentTools.current.open = false;
+              event.currentTarget.querySelectorAll("details[open]").forEach((item) => {
+                (item as HTMLDetailsElement).open = false;
+              });
               void send(event);
             }}
           >
-            <label htmlFor="academic-question">Your question</label>
+            <label className="study-question-label" htmlFor="academic-question">Your question</label>
             <textarea
               id="academic-question"
               rows={2}
@@ -1011,6 +1013,15 @@ export default function Chat() {
               placeholder={quiz ? "Enter a topic or answer the quiz question…" : "Ask EduMind a study question…"}
               disabled={sending || pending || !canSend}
             />
+            <div className="composer-bottom">
+              <details className="study-options" key={`options-${conversationId}`} onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.currentTarget.open = false;
+                  event.currentTarget.querySelector("summary")?.focus();
+                }
+              }}>
+                <summary>Options{quiz ? " · Quiz" : ""}</summary>
+                <div className="study-options-panel">
             <div className="study-research">
               <label htmlFor="study-mode">Study mode</label>
               <select
@@ -1049,7 +1060,8 @@ export default function Chat() {
                 </small>
               </div>
             )}
-            <div className="composer-bottom">
+                </div>
+              </details>
               <details
                 ref={attachmentTools}
                 key={conversationId}
