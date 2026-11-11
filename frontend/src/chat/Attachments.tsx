@@ -1,7 +1,15 @@
-import { useRef, useState, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { errorMessage } from "../api/client";
 import type { SessionClient } from "../auth/session";
 import "./Attachments.css";
+
+const attachmentTypes = new Map([
+  ["txt", "text/plain"],
+  ["pdf", "application/pdf"],
+  ["png", "image/png"],
+  ["jpg", "image/jpeg"],
+  ["jpeg", "image/jpeg"],
+]);
 
 export type Attachment = {
   id: string;
@@ -66,6 +74,63 @@ export function ImagePreview({
   );
 }
 
+export function PdfCitation({
+  client,
+  conversationId,
+  attachmentId,
+  page,
+  label,
+}: {
+  client: SessionClient;
+  conversationId: string;
+  attachmentId: string;
+  page: number;
+  label: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [excerpt, setExcerpt] = useState<{ filename: string; text: string }>();
+  const [error, setError] = useState("");
+  async function show() {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    setOpen(true);
+    setError("");
+    if (excerpt || loading) return;
+    setLoading(true);
+    try {
+      const result = await client.request(
+        `/conversations/${conversationId}/attachments/${attachmentId}/pages/${page}`,
+      ) as { filename: string; text: string };
+      setExcerpt(result);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <span className="pdf-citation">
+      <button type="button" aria-expanded={open} onClick={() => void show()}>
+        {label}
+      </button>
+      {open && (
+        <span className="pdf-citation-excerpt" role="status">
+          {excerpt ? (
+            <>
+              <strong>{excerpt.filename} · Page {page}</strong>
+              <span>{excerpt.text}</span>
+            </>
+          ) : error || "Loading cited page…"}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function Attachments({
   client,
   conversationId,
@@ -106,15 +171,8 @@ export function Attachments({
     try {
       for (const file of files) {
         const ext = file.name.split(".").pop()?.toLowerCase();
-        const mime =
-          ext === "txt"
-            ? "text/plain"
-            : ext === "png"
-              ? "image/png"
-              : ["jpg", "jpeg"].includes(ext || "")
-                ? "image/jpeg"
-                : "";
-        if (!mime) throw new Error("Use PNG, JPEG or UTF-8 TXT files.");
+        const mime = attachmentTypes.get(ext ?? "");
+        if (!mime) throw new Error("Use PNG, JPEG, UTF-8 TXT or text-based PDF files.");
         const item = (await client.request(
           `/conversations/${conversationId}/attachments?filename=${encodeURIComponent(file.name)}`,
           { method: "POST", headers: { "Content-Type": mime }, body: file },
@@ -160,11 +218,11 @@ export function Attachments({
   return (
     <div className="chat-attachments">
       <label className="attachment-label">
-        Attach an image or text note
+        Attach an image, note or PDF
         <input
-          aria-label="Attach an image or text note"
+          aria-label="Attach an image, note or PDF"
           type="file"
-          accept=".png,.jpg,.jpeg,.txt"
+          accept=".png,.jpg,.jpeg,.txt,.pdf"
           multiple
           disabled={!available || disabled || busy || value.length >= 2}
           onChange={(e) => {
@@ -174,7 +232,7 @@ export function Attachments({
       </label>
       <small>
         {available
-          ? "PNG/JPEG or TXT · two files · 1 MB each. Personal context, outside the reviewed library."
+          ? "PNG, JPEG, TXT or text-based PDF · two files · 1 MB each. PDFs can have up to 20 pages and 12,000 text characters."
           : "Attachments will be available after private file storage is configured."}
       </small>
       {value.map((item) => (

@@ -38,3 +38,28 @@
   height: auto;
   border-radius: 8px;
 }
+
+.pdf-citation > button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--green);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.pdf-citation-excerpt {
+  display: block;
+  margin-block: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  max-height: 15rem;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+
+.pdf-citation-excerpt > span {
+  display: block;
+}

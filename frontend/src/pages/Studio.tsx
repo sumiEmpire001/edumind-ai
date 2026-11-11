@@ -9,7 +9,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { ApiError, errorMessage } from "../api/client";
 import { Markdown } from "../chat/Markdown";
-import { downloadPdf } from "../studio/download";
+import { downloadPdf, downloadWord } from "../studio/download";
 import "./Studio.css";
 import { SearchField } from "../components/SearchField";
 
@@ -383,12 +383,17 @@ export default function Studio() {
       setBusy(false);
     }
   }
-  async function exportPdf() {
+  async function exportDocument(format: "pdf" | "word") {
     if (!doc || guard.current || dirty) return;
     guard.current = true;
     setBusy(true);
     setError("");
     try {
+      if (format === "word") {
+        await downloadWord(client, `/documents/${doc.id}/export-word`);
+        if (selected.current === doc.id) setNotice("Word document downloaded.");
+        return;
+      }
       const result = await downloadPdf(client, `/documents/${doc.id}/export`);
       if (selected.current === doc.id)
         setNotice(
@@ -412,7 +417,7 @@ export default function Studio() {
         <h1>From an idea to a document.</h1>
         <p>
           Plan a substantial report, write it section by section, and download a
-          formatted PDF.
+          formatted PDF or editable Word document.
         </p>
       </header>
       {error && (
@@ -590,10 +595,16 @@ export default function Studio() {
                   <button
                     disabled={busy || dirty || !doc.word_count}
                     onClick={() => {
-                      void exportPdf();
+                      void exportDocument("pdf");
                     }}
                   >
                     Download PDF
+                  </button>
+                  <button
+                    disabled={busy || dirty || !doc.word_count}
+                    onClick={() => void exportDocument("word")}
+                  >
+                    Download Word
                   </button>
                   <button
                     disabled={busy || dirty || !available}

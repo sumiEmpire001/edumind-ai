@@ -17,6 +17,8 @@ function textOf(node: ReactNode): string {
     )
     .join("");
 }
+const pdfCitation = /^edumind-pdf:([a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})\/([1-9]|1[0-9]|20)$/i;
+
 function safeUrl(value: string) {
   try {
     const url = new URL(value);
@@ -44,7 +46,15 @@ class FormattingBoundary extends Component<
     );
   }
 }
-export function Markdown({ text, allowLinks = true }: { text: string; allowLinks?: boolean }) {
+export function Markdown({
+  text,
+  allowLinks = true,
+  renderPdfCitation,
+}: {
+  text: string;
+  allowLinks?: boolean;
+  renderPdfCitation?: (id: string, page: number, label: ReactNode) => ReactNode;
+}) {
   return (
     <FormattingBoundary text={text}>
       <div className="answer-markdown">
@@ -63,7 +73,7 @@ export function Markdown({ text, allowLinks = true }: { text: string; allowLinks
               },
             ],
           ]}
-          urlTransform={safeUrl}
+          urlTransform={(value) => pdfCitation.test(value) ? value : safeUrl(value)}
           disallowedElements={[
             "img",
             "iframe",
@@ -76,14 +86,21 @@ export function Markdown({ text, allowLinks = true }: { text: string; allowLinks
             "video",
           ]}
           components={{
-            a: ({ href, children }) =>
-              allowLinks && href ? (
+            a: ({ href, children }) => {
+              const citation = href?.match(pdfCitation);
+              if (citation) {
+                return allowLinks && renderPdfCitation
+                  ? renderPdfCitation(citation[1], Number(citation[2]), children)
+                  : <span>{children}</span>;
+              }
+              return allowLinks && href ? (
                 <a href={href} target="_blank" rel="noopener noreferrer">
                   {children}
                 </a>
               ) : (
                 <span>{children}</span>
-              ),
+              );
+            },
             pre: ({ children }) => (
               <div className="code-frame">
                 <CopyButton text={textOf(children)} label="Copy code" />

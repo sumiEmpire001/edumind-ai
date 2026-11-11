@@ -1,14 +1,19 @@
 import base64
 import io
 from datetime import timedelta
+from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
+from xml.etree import ElementTree
+from zipfile import ZipFile
 
 import pytest
 from PIL import Image
-from pypdf import PdfReader
+from pypdf import PdfReader, PdfWriter
+from reportlab.pdfgen.canvas import Canvas
 from sqlalchemy.orm import Session
 
 from app.ai.provider import AcademicError
+from app.ai.research import ResearchResult, WebLink
 from app.auth.crypto import now
 from app.models.studio import StudioDocument
 from app.services.pdf_export import render
@@ -64,6 +69,7 @@ def test_draft_revision_owner_isolation_and_manual_pdf(studio):
     assert client.delete(f"/api/v1/conversations/{hidden}", headers=headers).status_code == 404
     path = f"/api/v1/documents/{doc['id']}"
     assert client.get("/api/v1/documents", headers=headers).json()[0]["id"] == doc["id"]
+    assert client.post(path + "/export-word", headers=headers).status_code == 422
     edited = client.patch(
         path + "/sections/0",
         headers=headers,
@@ -90,9 +96,24 @@ def test_draft_revision_owner_isolation_and_manual_pdf(studio):
     extracted = "\n".join(page.extract_text() for page in pdf.pages)
     assert "Café" in extracted and "α" in extracted and "Contents" in extracted
     assert len(pdf.pages) == payload["page_count"]
+    word = client.post(path + "/export-word", headers=headers)
+    assert word.status_code == 200, word.text
+    payload = word.json()
+    assert payload["media_type"].endswith("wordprocessingml.document")
+    with ZipFile(io.BytesIO(base64.b64decode(payload["base64"]))) as package:
+        assert package.testzip() is None
+        xml = ElementTree.fromstring(package.read("word/document.xml"))
+        text = [node.text for node in xml.findall(".//{*}t")]
+    assert "Café and force" in text
+    assert "Force is measured in newtons. α = 2." in text
     register(client, email="other@example.com")
     other = auth(login(client, email="other@example.com"))
-    for method, suffix in [("get", ""), ("post", "/export"), ("delete", "")]:
+    for method, suffix in [
+        ("get", ""),
+        ("post", "/export"),
+        ("post", "/export-word"),
+        ("delete", ""),
+    ]:
         assert getattr(client, method)(path + suffix, headers=other).status_code == 404
 
 
@@ -203,6 +224,47 @@ def conversation(studio):
     ).json()["id"]
 
 
+def test_create_studio_draft_from_owned_study_chat_answer(studio):
+    client, _, headers, provider = studio
+    cid = conversation(studio)
+    turn = client.post(
+        f"/api/v1/conversations/{cid}/messages",
+        headers=headers,
+        json={"request_id": str(uuid4()), "content": "Explain Newton's laws"},
+    )
+    assert turn.status_code == 201
+    question, answer = turn.json()["messages"]
+    payload = {
+        "client_id": str(uuid4()),
+        "title": "Newton's laws",
+        "brief": "Develop the answer into a study report.",
+        "target_pages": 3,
+        "outline": ["Study Chat answer", "Analysis", "Conclusions"],
+        "source_answer": {"conversation_id": cid, "message_id": answer["id"]},
+    }
+    draft = client.post("/api/v1/documents", headers=headers, json=payload)
+    assert draft.status_code == 201, draft.text
+    assert draft.json()["sections"][0]["content"] == answer["content"]
+    assert draft.json()["sections"][1]["content"] == ""
+    replay = client.post("/api/v1/documents", headers=headers, json=payload)
+    assert replay.status_code == 201
+    assert replay.json()["id"] == draft.json()["id"]
+    assert replay.json()["sections"] == draft.json()["sections"]
+    assert provider.calls == 1
+
+    invalid = {**payload, "client_id": str(uuid4())}
+    invalid["source_answer"] = {"conversation_id": cid, "message_id": question["id"]}
+    assert client.post("/api/v1/documents", headers=headers, json=invalid).status_code == 404
+    register(client, email="other@example.com")
+    other = auth(login(client, email="other@example.com"))
+    assert (
+        client.post(
+            "/api/v1/documents", headers=other, json={**payload, "client_id": str(uuid4())}
+        ).status_code
+        == 404
+    )
+
+
 def test_text_attachment_context_and_pdf_export(studio):
     client, _, headers, provider = studio
     client.app.state.object_store = MemoryStore()
@@ -236,6 +298,120 @@ def test_text_attachment_context_and_pdf_export(studio):
     exported = client.post(f"/api/v1/conversations/{cid}/export", headers=headers, json={})
     assert exported.status_code == 200
     assert base64.b64decode(exported.json()["base64"]).startswith(b"%PDF-")
+
+
+@pytest.mark.parametrize("mode", ["auto", "off", "on"])
+def test_web_research_with_attachments_requires_opt_in_and_sends_only_question(studio, mode):
+    client, _, headers, provider = studio
+    client.app.state.object_store = MemoryStore()
+    search = AsyncMock(
+        return_value=ResearchResult(
+            answer="",
+            sources=[
+                WebLink(
+                    title="Public study guide",
+                    url="https://example.org/study-guide",
+                    publisher="Source",
+                    description="Public evidence about acceleration.",
+                )
+            ],
+            suggestions=[],
+        )
+    )
+    client.app.state.research = search
+    cid = conversation(studio)
+    upload = client.post(
+        f"/api/v1/conversations/{cid}/attachments?filename=private-notes.txt",
+        headers={**headers, "Content-Type": "text/plain"},
+        content=b"Private lecture excerpt: an example with a mass of 2 kg.",
+    )
+    assert upload.status_code == 201
+    question = "What do the latest studies say about teaching acceleration?"
+    turn = client.post(
+        f"/api/v1/conversations/{cid}/messages",
+        headers=headers,
+        json={
+            "request_id": str(uuid4()),
+            "content": question,
+            "attachment_ids": [upload.json()["id"]],
+            "research_mode": mode,
+        },
+    )
+    assert turn.status_code == 201, turn.text
+    context = provider.contexts[-1][-1]
+    assert "Private lecture excerpt" in context.content
+    if mode == "on":
+        search.assert_awaited_once_with(question)
+        assert "Public evidence about acceleration" in context.web_context
+        assert "https://example.org/study-guide" in turn.json()["messages"][-1]["content"]
+    else:
+        search.assert_not_awaited()
+        assert not context.web_context
+
+
+def test_pdf_attachment_supplies_original_page_numbers_to_study_chat(studio):
+    client, _, headers, provider = studio
+    client.app.state.object_store = MemoryStore()
+    buffer = io.BytesIO()
+    pdf = Canvas(buffer)
+    pdf.showPage()
+    pdf.drawString(40, 700, "Acceleration is the rate of change of velocity.")
+    pdf.save()
+
+    cid = conversation(studio)
+    upload = client.post(
+        f"/api/v1/conversations/{cid}/attachments?filename=lecture.pdf",
+        headers={**headers, "Content-Type": "application/pdf"},
+        content=buffer.getvalue(),
+    )
+    assert upload.status_code == 201, upload.text
+    attachment = upload.json()
+    assert attachment["mime"] == "application/pdf"
+    response = client.post(
+        f"/api/v1/conversations/{cid}/messages",
+        headers=headers,
+        json={
+            "request_id": str(uuid4()),
+            "content": "Explain the definition from the lecture.",
+            "attachment_ids": [attachment["id"]],
+        },
+    )
+    assert response.status_code == 201, response.text
+    context = provider.contexts[-1][-1]
+    assert '"file": "lecture.pdf"' in context.content
+    assert '"page": 2' in context.content
+    assert "Acceleration is the rate of change of velocity." in context.content
+    assert not context.media
+    assert attachment["id"] in context.content
+
+    path = f"/api/v1/conversations/{cid}/attachments/{attachment['id']}/pages"
+    assert client.get(f"{path}/2", headers=headers).json() == {
+        "filename": "lecture.pdf",
+        "page": 2,
+        "text": "Acceleration is the rate of change of velocity.",
+    }
+    assert client.get(f"{path}/1", headers=headers).status_code == 404
+    assert client.get(f"{path}/2").status_code == 401
+    wrong_cid = conversation(studio)
+    assert client.get(f"{path.replace(cid, wrong_cid)}/2", headers=headers).status_code == 404
+
+
+@pytest.mark.parametrize("page_count, encrypted", [(1, False), (21, False), (1, True)])
+def test_pdf_attachment_rejects_scans_oversized_page_counts_and_encryption(page_count, encrypted):
+    from fastapi import HTTPException
+
+    from app.services.attachments import validate
+
+    writer = PdfWriter()
+    for _ in range(page_count):
+        writer.add_blank_page(width=200, height=200)
+    if encrypted:
+        writer.encrypt("fixture-password")
+    buffer = io.BytesIO()
+    writer.write(buffer)
+    with pytest.raises(HTTPException) as error:
+        validate("lecture.pdf", buffer.getvalue(), "application/pdf")
+    assert error.value.status_code == 422
 
 
 def test_image_attachment_reaches_provider_and_followups(studio):
@@ -373,6 +549,7 @@ def test_document_removal_during_generation_does_not_save_answer(studio):
     "name,mime,data",
     [
         ("unsafe.svg", "image/svg+xml", b"<svg/>"),
+        ("fake.pdf", "application/pdf", b"not a PDF"),
         ("fake.png", "image/png", b"not an image"),
         ("fake.jpg", "image/png", b"not an image"),
         ("note.txt", "text/plain", b"\x00bad text"),

@@ -158,6 +158,33 @@ def preview(cid: UUID, aid: UUID, request: Request, db: DB, identity: Current):
     return {"mime": "image/jpeg", "base64": base64.b64encode(output.getvalue()).decode()}
 
 
+@router.get("/conversations/{cid}/attachments/{aid}/pages/{page}")
+def pdf_page(cid: UUID, aid: UUID, page: int, request: Request, db: DB, identity: Current):
+    chat.regular_owned(db, identity.user.id, cid)
+    row = db.scalar(
+        select(ChatAttachment).where(
+            ChatAttachment.id == aid,
+            ChatAttachment.owner_id == identity.user.id,
+            ChatAttachment.conversation_id == cid,
+            ChatAttachment.mime == attachments.PDF_MIME,
+            ChatAttachment.deleted_at.is_(None),
+        )
+    )
+    if row is None or not 1 <= page <= attachments.MAX_PDF_PAGES:
+        raise HTTPException(404, "PDF page not found.")
+    consume(request, "personal-pdf-page", str(identity.user.id), 60, 60)
+    try:
+        data = storage(request).get(row.object_key)
+        if len(data) != row.size or len(data) > attachments.MAX_BYTES:
+            raise ValueError()
+    except Exception:
+        raise HTTPException(503, "The private PDF is unavailable.") from None
+    for item in attachments.pdf_pages(data):
+        if item["page"] == page:
+            return {"filename": row.filename, **item}
+    raise HTTPException(404, "No selectable text was found on that PDF page.")
+
+
 @router.delete("/conversations/{cid}/attachments/{aid}", status_code=204)
 def discard(cid: UUID, aid: UUID, request: Request, db: DB, identity: Current):
     from fastapi import HTTPException
