@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { canAccessKnowledgeApi, roleLabels } from "../auth/roles";
 import { Icon, type IconName } from "../components/Icon";
 const tools: {
   icon: IconName;
@@ -24,103 +25,66 @@ const tools: {
     to: "/app/studio",
     label: "Create a document",
   },
+];
+const contributionTools: typeof tools = [
   {
     icon: "book",
     title: "Knowledge library",
-    description:
-      "Contribute learning material and follow its review in one place.",
+    description: "Submit learning materials and track their review and processing.",
     to: "/app/knowledge",
-    label: "Explore the library",
+    label: "Open the library",
+  },
+  {
+    icon: "search",
+    title: "Knowledge API",
+    description: "Search approved sources and suggest academic questions for review.",
+    to: "/app/learning",
+    label: "Open Knowledge API",
   },
 ];
 export function Overview() {
   const { user } = useAuth();
   if (!user) return null;
+  const knowledgeAccess = canAccessKnowledgeApi(user.role);
+  const sections = [
+    { title: "Study tools", items: tools },
+    ...(knowledgeAccess ? [{ title: "Contribution tools", items: contributionTools }] : []),
+  ];
   return (
     <main id="main-content" tabIndex={-1} className="workspace-main dashboard">
-      <div className="workspace-page-title">
+      <header className="workspace-page-title">
         <div>
-          <p className="eyebrow">Your learning workspace</p>
-          <h1>
-            Hello, {user.full_name.split(" ")[0]}
-            <span className="greeting-dot">.</span>
-          </h1>
-          <p>What would you like to work on today?</p>
+          <h1>Hello, {user.full_name.trim().split(/\s+/)[0]}<span className="greeting-dot">.</span></h1>
+          <p>Choose what you’d like to work on today.</p>
         </div>
-        <div className="dashboard-heading-actions">
-          <span className="account-status">
-            {user.role === "admin"
-              ? "Administrator"
-              : user.role === "contributor"
-                ? "Contributor"
-                : "Student"}
-          </span>
-          <Link className="button" to="/app/chat">
-            Start a conversation <Icon name="arrow" />
+        <span className="account-status">{roleLabels[user.role]}</span>
+      </header>
+      {sections.map(({ title, items }) => (
+        <section className="dashboard-tools" key={title} aria-label={title}>
+          <div className="dashboard-section-heading"><h2>{title}</h2></div>
+          <div className="tool-grid">
+            {items.map((tool) => (
+              <Link to={tool.to} className={`tool-card tool-${tool.icon}`} key={tool.to}>
+                <span className="tool-icon"><Icon name={tool.icon} /></span>
+                <h3>{tool.title}</h3>
+                <p>{tool.description}</p>
+                <span className="tool-action">{tool.label}<Icon name="arrow" /></span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ))}
+      {user.role === "student" && (
+        <section className="getting-started" aria-labelledby="contribute-title">
+          <div>
+            <h2 id="contribute-title">Share learning materials</h2>
+            <p>Apply for contributor access to submit materials for review.</p>
+          </div>
+          <Link className="text-link" to="/app/knowledge">
+            Contributor application <Icon name="arrow" />
           </Link>
-        </div>
-      </div>
-      <section className="dashboard-banner">
-        <div>
-          <span className="banner-label">
-            <Icon name="spark" /> A little curiosity goes a long way
-          </span>
-          <h2>
-            Your next breakthrough
-            <br />
-            starts with a question.
-          </h2>
-          <p>
-            A space to think clearly, build understanding and bring your ideas
-            together.
-          </p>
-        </div>
-        <div className="banner-motif" aria-hidden="true">
-          <span>?</span>
-          <span>✦</span>
-          <span><Icon name="arrow" /></span>
-        </div>
-      </section>
-      <div className="dashboard-section-heading">
-        <h2>Make room for good work</h2>
-        <span>Choose a tool to get started</span>
-      </div>
-      <section className="tool-grid" aria-label="Learning tools">
-        {tools.map((tool) => (
-          <Link
-            to={tool.to}
-            className={`tool-card tool-${tool.icon}`}
-            key={tool.to}
-          >
-            <span className="tool-icon">
-              <Icon name={tool.icon} />
-            </span>
-            <h3>{tool.title}</h3>
-            <p>{tool.description}</p>
-            <span className="tool-action">
-              {tool.label}
-              <Icon name="arrow" />
-            </span>
-          </Link>
-        ))}
-      </section>
-      <section
-        className="getting-started"
-        aria-labelledby="getting-started-title"
-      >
-        <div>
-          <p className="eyebrow">A useful starting point</p>
-          <h2 id="getting-started-title">Better context. Clearer answers.</h2>
-          <p>
-            Share your topic, what you already know and the part you’re finding
-            difficult. Review AI responses and check important facts before
-            using them.
-          </p>
-        </div>
-        <Link className="text-link" to="/app/account">
-          Manage your account <span aria-hidden="true">→</span>
-        </Link>
-      </section>
+        </section>
+      )}
     </main>
   );
 }

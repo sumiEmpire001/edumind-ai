@@ -9,6 +9,7 @@ test("a nominated question becomes searchable only after a verified admin review
   const question = `Explain ${key}`;
   await login(page, "contributor-e2e@example.com");
   await expect(page).toHaveURL(/\/app$/);
+  await expect(page.getByRole("region", { name: "Contribution tools" })).toBeVisible();
   await page.goto("/app/learning");
   await expect(
     page.getByRole("heading", { name: "Knowledge that grows with you." }),
@@ -68,5 +69,9 @@ test("students cannot open the Knowledge API page", async ({ page }) => {
   await page.goto("/app/learning");
   await expect(page).toHaveURL(/\/app$/);
   await menu(page);
-  await expect(page.getByRole("link", { name: "Knowledge API" })).toHaveCount(0);
+  await expect(page.getByText("Knowledge API", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Study tools" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Contribution tools" })).toHaveCount(0);
+  await page.getByRole("link", { name: "Become a contributor" }).click();
+  await expect(page.getByRole("heading", { name: "Contributor application" })).toBeVisible();
 });

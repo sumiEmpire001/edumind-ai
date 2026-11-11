@@ -1,6 +1,7 @@
 import { lazy, Suspense, useLayoutEffect } from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
+import { canAccessKnowledgeApi } from "./auth/roles";
 import { SessionClient } from "./auth/session";
 import { SessionGate } from "./components/SessionGate";
 import { WorkspaceLayout } from "./components/WorkspaceLayout";
@@ -33,7 +34,7 @@ function ChatRoute() {
 
 function KnowledgeApiRoute() {
   const { user } = useAuth();
-  if (user?.role !== "admin" && user?.role !== "contributor") {
+  if (!canAccessKnowledgeApi(user?.role)) {
     return <Navigate to="/app" replace />;
   }
   return (
@@ -45,6 +46,8 @@ function KnowledgeApiRoute() {
 
 function RouteEffects() {
   const { pathname, hash } = useLocation();
+  const { user } = useAuth();
+  const knowledgeAccess = pathname === "/app/learning" && canAccessKnowledgeApi(user?.role);
   // Move route focus before paint so a delayed effect cannot steal focus from
   // the first field while a learner starts typing (including mobile WebKit).
   useLayoutEffect(() => {
@@ -57,7 +60,7 @@ function RouteEffects() {
       "/app": "Your workspace",
       "/app/account": "My account",
       "/app/knowledge": "Knowledge library",
-      "/app/learning": "Knowledge API",
+      "/app/learning": knowledgeAccess ? "Knowledge API" : "Your workspace",
       "/app/studio": "Document Studio",
     };
     document.title = `${titles[pathname] || (pathname.startsWith("/app/chat") ? "Study chat" : pathname.startsWith("/app/studio/") ? "Document Studio" : "Page not found")} · EduMind AI`;
@@ -66,7 +69,7 @@ function RouteEffects() {
       window.scrollTo?.(0, 0);
       document.getElementById("main-content")?.focus({ preventScroll: true });
     }
-  }, [pathname, hash]);
+  }, [pathname, hash, knowledgeAccess]);
   return null;
 }
 export default function App({ client }: { client?: SessionClient }) {

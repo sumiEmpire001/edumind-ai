@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { InboxSettings } from "../components/InboxSettings";
+import { canAccessKnowledgeApi } from "../auth/roles";
 import { useAuth } from "../auth/AuthContext";
 import { errorMessage } from "../api/client";
 import "./Knowledge.css";
@@ -48,7 +49,7 @@ const mimes: Record<string, string> = {
 export default function Knowledge() {
   const { client, user } = useAuth();
   const admin = user?.role === "admin";
-  const contributor = user?.role === "contributor" || admin;
+  const contributor = canAccessKnowledgeApi(user?.role);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [mine, setMine] = useState<Application | null>(null);
@@ -176,13 +177,14 @@ export default function Knowledge() {
       tabIndex={-1}
       className="workspace-main knowledge-page"
     >
-      <p className="eyebrow">THE KNOWLEDGE LIBRARY</p>
+      <p className="eyebrow">{contributor ? "Knowledge library" : "Contributions"}</p>
       <div className="knowledge-heading">
         <div>
-          <h1>{admin ? "Review. Verify. Share." : "Help knowledge grow."}</h1>
+          <h1>{contributor ? "Learning materials" : "Contributor application"}</h1>
           <p>
-            Academic materials become part of EduMind only after review and
-            successful processing.
+            {contributor
+              ? "Academic materials become searchable after review and successful processing."
+              : "Tell us what learning materials you’d like to share with EduMind."}
           </p>
         </div>
         <button className="button button-secondary page-refresh" disabled={busy || loading} onClick={() => void load()}>
