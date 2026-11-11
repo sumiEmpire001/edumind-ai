@@ -44,13 +44,7 @@ const tools: { path: string; icon: IconName; title: string; description: string;
     description: "Review suggested questions and track the searchable collection.",
     action: "Open Knowledge API",
   },
-  {
-    path: "/app/research?topic=lautech",
-    icon: "search",
-    title: "LAUTECH research",
-    description: "Find public university sources and share useful questions for review.",
-    action: "Research LAUTECH",
-  },
+
 ];
 
 function AdminOverview() {
