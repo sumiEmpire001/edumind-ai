@@ -292,3 +292,20 @@ it("keeps the approved knowledge search out of student chat options", async () =
   fireEvent.click(screen.getByLabelText("Chat options"));
   expect(screen.queryByText("Search approved knowledge")).not.toBeInTheDocument();
 });
+
+it("sends quiz mode for a topic and the student's follow-up answer", async () => {
+  const modes: string[] = [];
+  setup(true, (path, init) => {
+    if (path.endsWith("/messages")) modes.push(JSON.parse(init.body as string).study_mode);
+    return null;
+  });
+  const mode = await screen.findByLabelText("Study mode");
+  fireEvent.change(mode, { target: { value: "quiz" } });
+  const field = screen.getByLabelText("Your question");
+  for (const text of ["Newton's laws", "A net force causes acceleration"]) {
+    fireEvent.change(field, { target: { value: text } });
+    fireEvent.click(screen.getByRole("button", { name: "Send question" }));
+    await waitFor(() => expect(field).toHaveValue(""));
+  }
+  expect(modes).toEqual(["quiz", "quiz"]);
+});

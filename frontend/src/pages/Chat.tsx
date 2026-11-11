@@ -19,6 +19,7 @@ import {
   type Conversation,
   type Detail,
   type ResearchMode,
+  type StudyMode,
 } from "../chat/api";
 import { Markdown } from "../chat/Markdown";
 import { CopyButton } from "../chat/CopyButton";
@@ -104,7 +105,9 @@ export default function Chat() {
   const [notice, setNotice] = useState("");
   const [pollFailed, setPollFailed] = useState(false);
   const [draft, setDraft] = useState("");
-  const canSend = cap?.available || (knowledgeAccess && /^\/knowledge\b/i.test(draft.trimStart()));
+  const [studyMode, setStudyMode] = useState<StudyMode>("explain");
+  const quiz = studyMode === "quiz";
+  const canSend = cap?.available || (!quiz && knowledgeAccess && /^\/knowledge\b/i.test(draft.trimStart()));
   const [researchMode, setResearchMode] = useState<ResearchMode>("auto");
   const [sending, setSending] = useState(false);
   const [attached, setAttached] = useState<Attachment[]>([]);
@@ -118,6 +121,7 @@ export default function Chat() {
     content: string;
     attachmentKey: string;
     researchMode: ResearchMode;
+    studyMode: StudyMode;
   } | null>(null);
   const [creating, setCreating] = useState(false);
   const createGuard = useRef(false);
@@ -197,6 +201,7 @@ export default function Chat() {
     setNotice("");
     setDraft("");
     setResearchMode("auto");
+    setStudyMode("explain");
     setAttached([]);
     attachmentVersion.current++;
     setUploading(false);
@@ -312,7 +317,7 @@ export default function Chat() {
     event.preventDefault();
     const content = draft.trim();
     const id = conversationId;
-    const mode = cap?.web_research_available && !attached.length ? researchMode : "auto";
+    const mode = !quiz && cap?.web_research_available && !attached.length ? researchMode : "auto";
     if (
       !id ||
       !content ||
@@ -331,6 +336,7 @@ export default function Chat() {
       attempt.current.conversation !== id ||
       attempt.current.content !== content ||
       attempt.current.researchMode !== mode ||
+      attempt.current.studyMode !== studyMode ||
       attempt.current.attachmentKey !== attached.map((a) => a.id).join(",")
     )
       attempt.current = {
@@ -339,6 +345,7 @@ export default function Chat() {
         content,
         attachmentKey: attached.map((a) => a.id).join(","),
         researchMode: mode,
+        studyMode,
       };
     const question = attempt.current;
     try {
@@ -349,6 +356,7 @@ export default function Chat() {
         cap?.timeout_seconds ?? 20,
         attached.map((a) => a.id),
         question.researchMode,
+        question.studyMode,
       );
       const fresh = await loadDetail(id);
       if (
@@ -520,7 +528,7 @@ export default function Chat() {
               <span className="study-control-label">More</span>
             </summary>
             <div className="study-menu">
-              {data && knowledgeAccess && (
+              {data && knowledgeAccess && !quiz && (
                 <button
                   type="button"
                   disabled={sending || pending || attached.length > 0}
@@ -951,10 +959,23 @@ export default function Chat() {
               maxLength={4000}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder="Ask EduMind a study question…"
+              placeholder={quiz ? "Enter a topic or answer the quiz question…" : "Ask EduMind a study question…"}
               disabled={sending || pending || !canSend}
             />
-            {cap?.web_research_available && (
+            <div className="study-research">
+              <label htmlFor="study-mode">Study mode</label>
+              <select
+                id="study-mode"
+                value={studyMode}
+                disabled={sending || pending}
+                onChange={(event) => setStudyMode(event.target.value as StudyMode)}
+              >
+                <option value="explain">Explain</option>
+                <option value="quiz">Quiz me</option>
+              </select>
+              {quiz && <small>Practice one question at a time using the topic or material you share.</small>}
+            </div>
+            {cap?.web_research_available && !quiz && (
               <div className="study-research">
                 <label htmlFor="study-research-mode">Web research</label>
                 <select

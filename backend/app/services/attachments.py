@@ -110,6 +110,8 @@ def question_hash(data):
     )
     if data.research_mode != "auto":
         extra += "\0research:" + data.research_mode
+    if data.study_mode != "explain":
+        extra += "\0study:" + data.study_mode
     return digest(data.content + extra)
 
 
