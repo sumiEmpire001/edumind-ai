@@ -419,3 +419,46 @@ def test_powerpoint_follows_presentation_order_and_real_metadata():
     assert metadata["author"] == "Provided Author"
     assert metadata["slide_count"] == 2
     assert "institution" not in metadata
+
+
+def test_approved_scan_is_indexed_and_previewed_with_page_provenance(knowledge):
+    import shutil
+
+    from tests.test_document_ocr import scanned_pdf
+
+    if not shutil.which("tesseract") or not shutil.which("pdftoppm"):
+        pytest.skip("OCR binaries unavailable")
+    k = knowledge
+    response = k.client.post(
+        "/api/v1/knowledge/submissions?title=Scanned%20experiment&filename=scan.pdf",
+        headers={**k.contributor, "Content-Type": "application/pdf"},
+        content=scanned_pdf(),
+    )
+    assert response.status_code == 201, response.text
+    sid = response.json()["id"]
+    assert not run_one(k.engine, k.store, None)
+    assert approve(k, sid).status_code == 200
+    assert run_one(k.engine, k.store, None)
+    preview = k.client.get(f"/api/v1/knowledge/submissions/{sid}/preview-data", headers=k.admin)
+    assert preview.status_code == 200, preview.text
+    assert "Page 2 (OCR)" in preview.json()["text"]
+    assert "300" in preview.json()["text"]
+    assert preview.json()["metadata"]["ocr_pages"] == [2]
+
+
+def test_uncertain_ocr_is_not_searchable(knowledge, monkeypatch):
+    k = knowledge
+    sid = upload(k).json()["id"]
+    assert approve(k, sid).status_code == 200
+
+    def unreadable(*args, **kwargs):
+        raise ValueError("ocr_review_required")
+
+    monkeypatch.setattr("app.knowledge.worker.extract", unreadable)
+    assert run_one(k.engine, k.store, None)
+    with Session(k.engine) as db:
+        document = db.scalar(select(KnowledgeDocument))
+        assert not document.active
+        assert document.processing_status == "failed"
+        assert db.scalar(select(ProcessingJob)).error_code == "ocr_review_required"
+        assert db.scalar(select(KnowledgeChunk)) is None

@@ -50,7 +50,7 @@ def validate(filename, data, mime):
     return ext
 
 
-def extract(filename, data, mime):
+def extract(filename, data, mime, *, allow_ocr=False):
     ext = validate(filename, data, mime)
     metadata = {"file_type": ext[1:]}
     sections = []
@@ -71,6 +71,37 @@ def extract(filename, data, mime):
         sections = [
             (f"Page {i + 1}", page.extract_text() or "") for i, page in enumerate(reader.pages)
         ]
+        image_pages = [
+            i + 1
+            for i, page in enumerate(reader.pages)
+            if len(sections[i][1].strip()) < 80
+            and hasattr(page, "get")
+            and bool(page.get("/Resources"))
+            and bool(page["/Resources"].get("/XObject"))
+        ]
+        if image_pages:
+            metadata["ocr_required_pages"] = image_pages
+            if allow_ocr:
+                from app.knowledge.ocr import pdf_ocr
+
+                recognized = pdf_ocr(data, image_pages)
+                sections = [
+                    (
+                        location + " (OCR)" if i + 1 in recognized else location,
+                        recognized.get(i + 1, text),
+                    )
+                    for i, (location, text) in enumerate(sections)
+                ]
+                metadata["ocr_pages"] = image_pages
+                metadata["ocr_notice"] = (
+                    "OCR transcription: verify handwriting, equations and numbers "
+                    "against the original."
+                )
+            else:
+                metadata["ocr_notice"] = (
+                    "Scanned pages are transcribed after approval. This preview "
+                    "contains native text only."
+                )
     elif ext in {".docx", ".pptx"}:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             if "docProps/core.xml" in archive.namelist():
