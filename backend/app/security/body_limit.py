@@ -17,6 +17,9 @@ class BodyLimitMiddleware:
                 scope["path"].startswith("/api/v1/conversations/")
                 and scope["path"].endswith("/attachments")
             )
+            else 512 * 1024
+            if scope["path"].startswith("/api/v1/admin/knowledge/")
+            and scope["path"].endswith("/handwriting/approve")
             else 128 * 1024
             if scope["path"].startswith("/api/v1/documents")
             else self.limit

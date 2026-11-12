@@ -204,6 +204,14 @@ def review(sid: UUID, data: Decision, request: Request, db: DB, admin: Admin):
 
 @router.get("/admin/knowledge")
 def knowledge(db: DB, admin: Admin, offset: int = Query(0, ge=0)):
+    rows = db.execute(
+        select(KnowledgeDocument, ProcessingJob.error_code, KnowledgeSubmission.mime)
+        .join(KnowledgeSubmission, KnowledgeDocument.submission_id == KnowledgeSubmission.id)
+        .outerjoin(ProcessingJob, ProcessingJob.document_id == KnowledgeDocument.id)
+        .order_by(KnowledgeDocument.created_at.desc())
+        .offset(offset)
+        .limit(50)
+    )
     return [
         {
             "id": str(d.id),
@@ -212,17 +220,11 @@ def knowledge(db: DB, admin: Admin, offset: int = Query(0, ge=0)):
             "active": d.active,
             "processing_status": d.processing_status,
             "embedding_model": d.embedding_model,
-            "metadata": d.metadata_json,
-            "error_code": db.scalar(
-                select(ProcessingJob.error_code).where(ProcessingJob.document_id == d.id)
-            ),
+            "mime": mime,
+            "metadata": {k: v for k, v in d.metadata_json.items() if k != "handwriting_pages"},
+            "error_code": error_code,
         }
-        for d in db.scalars(
-            select(KnowledgeDocument)
-            .order_by(KnowledgeDocument.created_at.desc())
-            .offset(offset)
-            .limit(50)
-        )
+        for d, error_code, mime in rows
     ]
 
 
@@ -328,3 +330,121 @@ def knowledge_capabilities(request: Request, current: Current):
         "max_upload_bytes": 3 * 1024 * 1024,
         "rag_enabled": config.rag_enabled,
     }
+
+
+class TranscriptionPage(InputModel):
+    page: int = Field(ge=1, le=10, strict=True)
+    text: str = Field(max_length=20000)
+
+
+class TranscriptionReview(InputModel):
+    version: int = Field(ge=1, strict=True)
+    pages: list[TranscriptionPage] = Field(min_length=1, max_length=10)
+
+
+def handwriting_document(db, did):
+    document = db.scalar(
+        select(KnowledgeDocument).where(KnowledgeDocument.id == did).with_for_update()
+    )
+    if not document:
+        raise HTTPException(404, "Document not found.")
+    submission = db.get(KnowledgeSubmission, document.submission_id)
+    if submission.status != "approved" or submission.mime != "application/pdf":
+        raise HTTPException(409, "Approve a PDF before requesting handwriting transcription.")
+    return document
+
+
+@router.post("/admin/knowledge/{did}/handwriting", dependencies=[Depends(trusted_origin)])
+def queue_handwriting(did: UUID, request: Request, db: DB, admin: Admin):
+    consume(request, "handwriting", str(admin.user.id), 5, 3600)
+    if not request.app.state.settings.gemini_api_key:
+        raise HTTPException(503, "Gemini vision is not configured.")
+    document = handwriting_document(db, did)
+    job = db.scalar(select(ProcessingJob).where(ProcessingJob.document_id == did).with_for_update())
+    if job.state in {"queued", "processing"}:
+        raise HTTPException(409, "Processing is already running.")
+    document.metadata_json = {"extraction_mode": "handwriting"}
+    document.active, document.processing_status = False, "queued"
+    job.state, job.attempts, job.error_code, job.lease_until = "queued", 0, None, None
+    audit(db, request, "knowledge.handwriting_requested", admin.user.id, did)
+    db.commit()
+    return {"status": "queued"}
+
+
+@router.get("/admin/knowledge/{did}/handwriting")
+def handwriting_preview(did: UUID, request: Request, db: DB, admin: Admin):
+    document = handwriting_document(db, did)
+    if not document.metadata_json.get("handwriting_review_required"):
+        raise HTTPException(409, "No handwriting draft awaiting review.")
+    import base64
+
+    submission = db.get(KnowledgeSubmission, document.submission_id)
+    store = getattr(request.app.state, "object_store", None) or configured_store(
+        request.app.state.settings
+    )
+    try:
+        original = store.get(submission.object_key)
+        if len(original) > 3 * 1024 * 1024 or not original.startswith(b"%PDF-"):
+            raise ValueError("invalid_original")
+    except Exception:
+        raise HTTPException(503, "Original PDF unavailable; try again before reviewing.") from None
+    return {
+        "version": document.version,
+        "pages": document.metadata_json["handwriting_pages"],
+        "original_pdf_base64": base64.b64encode(original).decode(),
+    }
+
+
+@router.post("/admin/knowledge/{did}/handwriting/approve", dependencies=[Depends(trusted_origin)])
+def approve_handwriting(
+    did: UUID, data: TranscriptionReview, request: Request, db: DB, admin: Admin
+):
+    from app.knowledge.extract import chunk
+
+    consume(request, "handwriting-review", str(admin.user.id), 30, 60)
+    document = handwriting_document(db, did)
+    job = db.scalar(select(ProcessingJob).where(ProcessingJob.document_id == did).with_for_update())
+    metadata = document.metadata_json
+    if (
+        document.version != data.version
+        or document.processing_status != "succeeded"
+        or job.state != "succeeded"
+        or not metadata.get("handwriting_review_required")
+    ):
+        raise HTTPException(409, "The draft changed. Reload it before approving.")
+    if [p.page for p in data.pages] != list(range(1, metadata["page_count"] + 1)):
+        raise HTTPException(422, "Keep every page in its original order.")
+    if any("[unclear]" in p.text.lower() or "\x00" in p.text for p in data.pages):
+        raise HTTPException(
+            422, "Resolve all [unclear] markers using the original before approval."
+        )
+    if not any(p.text.strip() for p in data.pages) or sum(len(p.text) for p in data.pages) > 100000:
+        raise HTTPException(422, "Provide readable text within 100,000 characters.")
+    sections = [(f"Page {p.page} (reviewed transcription)", p.text.strip()) for p in data.pages]
+    try:
+        pieces = chunk(sections)
+    except ValueError:
+        raise HTTPException(422, "The transcription is too large.") from None
+    version = document.version + 1
+    for ordinal, (location, content) in enumerate(pieces):
+        db.add(
+            KnowledgeChunk(
+                document_id=did,
+                version=version,
+                ordinal=ordinal,
+                location=location,
+                content=content,
+                embedding=None,
+            )
+        )
+    document.version, document.active = version, True
+    document.metadata_json = {
+        **metadata,
+        "handwriting_review_required": False,
+        "handwriting_pages": [p.model_dump() for p in data.pages],
+        "transcription_reviewed_by": str(admin.user.id),
+        "transcription_reviewed_at": now().isoformat(),
+    }
+    audit(db, request, "knowledge.transcription_approved", admin.user.id, did)
+    db.commit()
+    return {"status": "searchable", "version": version}
