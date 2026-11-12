@@ -27,7 +27,7 @@ from app.storage.objects import configured_store
 logger = logging.getLogger("edumind")
 
 
-def run_one(engine, store, embeddings):
+def run_one(engine, store, embeddings, settings=None):
     with Session(engine) as db:
         exhausted = list(
             db.execute(
@@ -71,14 +71,20 @@ def run_one(engine, store, embeddings):
         db.commit()
         filename, mime, key = s.filename, s.mime, s.object_key
         model = d.embedding_model
+        handwriting = d.metadata_json.get("extraction_mode") == "handwriting"
     try:
-        sections, metadata = extract(filename, store.get(key), mime, allow_ocr=True)
+        if handwriting:
+            from app.knowledge.handwriting import extract_handwriting
+
+            sections, metadata = extract_handwriting(store.get(key), settings or get_settings())
+        else:
+            sections, metadata = extract(filename, store.get(key), mime, allow_ocr=True)
         chunks = chunk(sections)
         if embeddings is not None and embeddings.model != model:
             raise ValueError("embedding_model_changed")
         vectors = (
             embeddings.embed([text for _, text in chunks])
-            if embeddings is not None
+            if embeddings is not None and not metadata.get("handwriting_review_required")
             else [None] * len(chunks)
         )
         if len(vectors) != len(chunks):
@@ -113,7 +119,7 @@ def run_one(engine, store, embeddings):
                 )
             d.version, d.active, d.processing_status, d.metadata_json = (
                 version,
-                True,
+                not metadata.get("handwriting_review_required", False),
                 "succeeded",
                 metadata,
             )
@@ -140,6 +146,14 @@ def run_one(engine, store, embeddings):
             "ocr_timeout",
             "ocr_unavailable",
             "ocr_output_limit",
+            "handwriting_unavailable",
+            "handwriting_quota",
+            "handwriting_incomplete",
+            "handwriting_page_limit",
+            "handwriting_timeout",
+            "handwriting_render_failed",
+            "handwriting_empty",
+            "handwriting_text_limit",
         }:
             code = str(exc)
         fail(engine, jid, did, lease, code)
@@ -227,7 +241,7 @@ def main():
                 if recover:
                     retry_for_text_indexing(engine)
                     recover = False
-                processed = run_one(engine, store, embedder)
+                processed = run_one(engine, store, embedder, config)
             except SQLAlchemyError as exc:
                 logger.warning("knowledge_queue_unavailable kind=%s", type(exc).__name__)
                 processed = False

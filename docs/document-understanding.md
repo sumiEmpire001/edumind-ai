@@ -53,3 +53,33 @@ The system does not interpret diagrams. Complex scans need manual transcription/
 there is no handwriting recognition guarantee or automatic equation reconstruction.
 Scanned PDFs attached privately to Study Chat still follow the separate attachment
 rules; this change is for contributed/approved Knowledge library PDFs.
+
+## Handwriting vision workflow
+
+For approved handwritten PDFs, admins can expand **Handwritten PDF?** and choose
+**Read handwriting**. This explicitly sends each rendered page image to the configured
+Gemini model using the existing API key and quota. Local printed-text OCR remains the
+default. The handwriting path supports at most 10 PDF pages per job, renders one page
+at a time at a maximum dimension of 2000 pixels, and uses bounded per-request timeouts.
+No billing settings or model weights are changed.
+
+Vision output is a literal transcription, not a summary or solution. The prompt preserves
+reading order and asks for `[unclear]` instead of guesses. JSON shape, text length and
+completion status are validated. Quota, malformed response and truncation failures do
+not publish a partial index. The document is excluded from search when the job is queued.
+
+All successful vision transcriptions are saved as inactive drafts. **Review transcription**
+shows each page and provides the original PDF download. An admin must compare the text
+with the original, correct uncertain words/numbers/symbols, and approve it. Approval rejects
+unresolved `[unclear]` markers, missing/reordered pages and stale versions, then creates a
+new searchable chunk version and records who reviewed it. A removed or reprocessing document
+cannot be published from an old draft. Draft text is not returned to students or indexed
+for answers. Contributors cannot request or approve handwriting jobs.
+
+The original printed-OCR limitations above still apply to that default path. Vision helps
+with handwriting but can also misread it, including confident mistakes. Human review is
+mandatory; no handwriting accuracy percentage has been measured. Automated tests exercise
+image rendering, protocol validation, review access controls, version safety and search
+exclusion using deterministic provider responses. They do not constitute a live-model
+handwriting accuracy benchmark. Evaluate actual handwriting samples before relying on
+transcriptions for equations or numerical results.

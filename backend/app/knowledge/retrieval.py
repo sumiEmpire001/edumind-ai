@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app.ai.provider import AcademicError
-from app.knowledge.chat import evidence_prompt
+from app.knowledge.chat import evidence, evidence_prompt
 from app.knowledge.embeddings import Embeddings
 from app.models.knowledge import KnowledgeChunk, KnowledgeDocument, KnowledgeSubmission
 
@@ -71,6 +71,8 @@ class RetrievalProvider:
         finally:
             # SDK requests have their own bounded timeout.
             await run_in_threadpool(embedder.close)
+        if not sources:
+            sources = await run_in_threadpool(evidence, self.engine, context[-1].content)
         if not sources:
             return await self.provider.generate(context)
         references = [{"id": f"S{i + 1}", **s} for i, s in enumerate(sources)]
