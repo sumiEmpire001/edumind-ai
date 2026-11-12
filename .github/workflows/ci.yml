@@ -43,6 +43,8 @@ jobs:
           echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
           /usr/lib/postgresql/16/bin/pg_dump --version
           /usr/lib/postgresql/16/bin/pg_restore --version
+      - name: Install local OCR engines
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils tesseract-ocr tesseract-ocr-eng fonts-dejavu-core
       - run: pytest -q -rP
       - run: pip-audit -r requirements.txt
   frontend:

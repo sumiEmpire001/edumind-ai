@@ -327,6 +327,10 @@ def test_study_chat_checks_index_for_natural_document_question(knowledge):
     )
     assert response.status_code == 201, response.text
     answer = response.json()["messages"][-1]
-    assert answer["provider"] == "knowledge"
-    assert "approved project" in answer["content"]
-    assert provider.calls == 0
+    assert answer["provider"] == "verification"
+    assert "Reference materials retrieved" in answer["content"]
+    assert provider.calls == 1
+    prompt = provider.contexts[-1][-1].content
+    assert "approved project" in prompt
+    assert "Student question:\nWhat is Sutterby Nanofluid" in prompt
+    assert "rather than copying passages" in prompt

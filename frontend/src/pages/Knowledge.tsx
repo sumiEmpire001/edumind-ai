@@ -24,6 +24,7 @@ type Application = {
   reason: string | null;
 };
 type Document = {
+  error_code?: string | null;
   id: string;
   submission_id: string;
   version: number;
@@ -253,7 +254,7 @@ export default function Knowledge() {
         <section className="knowledge-card">
           <h2>Submit learning material</h2>
           <p>
-            PDF, DOCX, TXT, CSV or PPTX · up to 3 MB · text-based documents only
+            PDF, DOCX, TXT, CSV or PPTX · up to 3 MB · scanned PDFs supported after approval (up to 40 scanned pages)
           </p>
           {!storageAvailable && (
             <p role="status">
@@ -493,6 +494,15 @@ export default function Knowledge() {
                   Version {d.version} · {d.processing_status} ·{" "}
                   {d.active ? "Searchable" : "Excluded"}
                 </p>
+                {d.processing_status === "failed" && (
+                  <p role="status">
+                    {d.error_code === "ocr_review_required"
+                      ? "The scan could not be read confidently. Upload a clearer scan or a typed transcription; handwriting and equations need manual checking."
+                      : d.error_code === "ocr_page_limit"
+                        ? "This PDF exceeds 40 scanned pages. Split it into smaller documents."
+                        : "Processing did not finish. Check the original file, then retry indexing. If it fails again, upload a clearer or smaller document."}
+                  </p>
+                )}
                 <div className="knowledge-actions">
                   <button
                     disabled={
