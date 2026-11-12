@@ -446,18 +446,7 @@ async def submit(
     )
     if ticket.cached is not None:
         return ticket.cached
-    web_requested = should_research(data.content, "auto", bool(data.attachment_ids))
-    automatic = (
-        knowledge_chat.automatic_topic(data.content)
-        if not quiz
-        and query is None
-        and not news
-        and not data.attachment_ids
-        and data.research_mode != "on"
-        and not web_requested
-        else None
-    )
-    if query is not None or automatic is not None or news:
+    if query is not None or news:
         code, sources = None, []
         try:
             if news:
@@ -466,8 +455,7 @@ async def submit(
                 answer, sources = await run_in_threadpool(
                     lambda: knowledge_chat.find(
                         engine,
-                        query if query is not None else automatic,
-                        automatic=query is None,
+                        query,
                     )
                 )
         except SQLAlchemyError:
@@ -496,25 +484,37 @@ async def submit(
                 context, web_sources, web_notice = await add_research(context, data.content, search)
             else:
                 web_notice = "Web research is currently unavailable.\n\n"
+        references = []
+        if not data.attachment_ids and not config.rag_enabled:
+            references = await run_in_threadpool(knowledge_chat.evidence, engine, data.content)
+            if references:
+                context = [
+                    *context[:-1],
+                    replace(
+                        context[-1],
+                        content=knowledge_chat.evidence_prompt(references, context[-1].content),
+                    ),
+                ]
         answer = await asyncio.wait_for(provider.generate(context), config.chat_timeout_seconds)
         if not isinstance(answer, str) or not answer.strip():
             raise AcademicError("empty_response")
         if len(answer) > 12000:
             raise AcademicError("provider_failure")
-        sources = getattr(answer, "sources", [])
+        sources = getattr(answer, "sources", []) or references
         if sources:
             import re
 
             answer = re.sub(
                 r"\[S(\d+)\]",
-                lambda m: m.group() if int(m.group(1)) <= len(sources) else "",
+                lambda m: m.group() if 1 <= int(m.group(1)) <= len(sources) else "",
                 answer,
             )
             answer = (
                 str(answer)
                 + "\n\nReference materials retrieved:\n"
                 + "\n".join(
-                    f"- [{source['id']}] {source['title']} — {source['location']}"
+                    f"- [{source['id']}] {knowledge_chat.plain_markdown(source['title'])}"
+                    f" — {knowledge_chat.plain_markdown(source['location'] or '')}"
                     for source in sources
                 )
             )

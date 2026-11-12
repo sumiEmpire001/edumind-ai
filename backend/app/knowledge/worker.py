@@ -72,7 +72,7 @@ def run_one(engine, store, embeddings):
         filename, mime, key = s.filename, s.mime, s.object_key
         model = d.embedding_model
     try:
-        sections, metadata = extract(filename, store.get(key), mime)
+        sections, metadata = extract(filename, store.get(key), mime, allow_ocr=True)
         chunks = chunk(sections)
         if embeddings is not None and embeddings.model != model:
             raise ValueError("embedding_model_changed")
@@ -134,6 +134,14 @@ def run_one(engine, store, embeddings):
             getattr(getattr(exc, "orig", None), "sqlstate", None),
         )
         code = "text_processing_failed" if embeddings is None else "processing_failed"
+        if isinstance(exc, ValueError) and str(exc) in {
+            "ocr_review_required",
+            "ocr_page_limit",
+            "ocr_timeout",
+            "ocr_unavailable",
+            "ocr_output_limit",
+        }:
+            code = str(exc)
         fail(engine, jid, did, lease, code)
     return True
 

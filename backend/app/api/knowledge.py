@@ -12,6 +12,7 @@ from app.knowledge import service
 from app.models.identity import User
 from app.models.knowledge import (
     ContributorApplication,
+    KnowledgeChunk,
     KnowledgeDocument,
     KnowledgeSubmission,
     ProcessingJob,
@@ -212,6 +213,9 @@ def knowledge(db: DB, admin: Admin, offset: int = Query(0, ge=0)):
             "processing_status": d.processing_status,
             "embedding_model": d.embedding_model,
             "metadata": d.metadata_json,
+            "error_code": db.scalar(
+                select(ProcessingJob.error_code).where(ProcessingJob.document_id == d.id)
+            ),
         }
         for d in db.scalars(
             select(KnowledgeDocument)
@@ -275,11 +279,33 @@ def preview_data(sid: UUID, request: Request, db: DB, current: Current):
 
     response = preview(sid, request, db, current)
     row = db.get(KnowledgeSubmission, sid)
+    document = db.scalar(
+        select(KnowledgeDocument).where(
+            KnowledgeDocument.submission_id == sid,
+            KnowledgeDocument.processing_status == "succeeded",
+            KnowledgeDocument.active.is_(True),
+        )
+    )
+    if document:
+        passages = db.scalars(
+            select(KnowledgeChunk)
+            .where(
+                KnowledgeChunk.document_id == document.id,
+                KnowledgeChunk.version == document.version,
+            )
+            .order_by(KnowledgeChunk.ordinal)
+        ).all()
+        return {
+            "text": "\n\n".join(c.location + "\n" + c.content for c in passages)[:100000],
+            "metadata": document.metadata_json,
+        }
     try:
         sections, metadata = extract(row.filename, response.body, row.mime)
     except Exception:
         raise HTTPException(
-            422, "No readable text preview available; scanned PDFs need OCR."
+            422,
+            "No native text preview available. Scanned PDFs are transcribed after "
+            "approval; review the original file first.",
         ) from None
     return {
         "text": "\n\n".join(location + "\n" + text for location, text in sections)[:100000],
