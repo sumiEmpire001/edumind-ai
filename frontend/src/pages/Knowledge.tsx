@@ -4,6 +4,7 @@ import { canAccessKnowledgeApi } from "../auth/roles";
 import { useAuth } from "../auth/AuthContext";
 import { errorMessage } from "../api/client";
 import "./Knowledge.css";
+import { HandwritingReview } from "../components/HandwritingReview";
 
 type Submission = {
   id: string;
@@ -24,6 +25,8 @@ type Application = {
   reason: string | null;
 };
 type Document = {
+  mime?: string;
+  metadata?: { handwriting_review_required?: boolean };
   error_code?: string | null;
   id: string;
   submission_id: string;
@@ -496,12 +499,20 @@ export default function Knowledge() {
                 </p>
                 {d.processing_status === "failed" && (
                   <p role="status">
-                    {d.error_code === "ocr_review_required"
+                    {d.error_code?.startsWith("handwriting_")
+                      ? "Handwriting transcription did not finish. Check Gemini availability and quota, use a PDF of at most 10 pages, then try Read handwriting again."
+                      : d.error_code === "ocr_review_required"
                       ? "The scan could not be read confidently. Upload a clearer scan or a typed transcription; handwriting and equations need manual checking."
                       : d.error_code === "ocr_page_limit"
                         ? "This PDF exceeds 40 scanned pages. Split it into smaller documents."
                         : "Processing did not finish. Check the original file, then retry indexing. If it fails again, upload a clearer or smaller document."}
                   </p>
+                )}
+                {d.mime === "application/pdf" && (
+                  <HandwritingReview key={`${d.id}-${d.version}`} id={d.id}
+                    pending={!!d.metadata?.handwriting_review_required}
+                    processing={busy || ["queued", "processing"].includes(d.processing_status)}
+                    onChange={load} />
                 )}
                 <div className="knowledge-actions">
                   <button
