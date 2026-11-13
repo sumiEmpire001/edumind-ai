@@ -24,12 +24,12 @@ export function HandwritingReview({ id, pending, processing, onChange }: {
         setDraft(await client.request(`/admin/knowledge/${id}/handwriting`) as Draft);
       })}>Review transcription</button>
     </> : <details>
-      <summary>Handwritten PDF?</summary>
-      <p>Read up to 10 pages using Gemini vision. Page images are sent to your configured Gemini service and use its API quota. The document stays out of search until an admin checks the transcription.</p>
+      <summary>Advanced extraction retry</summary>
+      <p>Scanned pages are detected automatically. Use this retry only if extraction still needs improvement. Read up to 10 pages using Gemini vision. Page images are sent to your configured Gemini service and use its API quota. The document stays out of search until an admin checks the transcription.</p>
       <button disabled={busy || processing} onClick={() => void run(async () => {
         await client.request(`/admin/knowledge/${id}/handwriting`, { method: "POST" });
         setDraft(null); await onChange();
-      })}>Read handwriting</button>
+      })}>Retry with vision</button>
     </details>}
     {draft && pending && <form onSubmit={event => {
       event.preventDefault();

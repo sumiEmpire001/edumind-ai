@@ -23,5 +23,5 @@ it("requires correction of unclear words and sends only reviewed text and versio
 it("discloses Gemini processing before queuing and disables a running job", () => {
   render(<HandwritingReview id="doc" pending={false} processing onChange={vi.fn()} />);
   expect(screen.getByText(/Page images are sent/)).toBeInTheDocument();
-  expect(screen.getByText("Read handwriting")).toBeDisabled();
+  expect(screen.getByText("Retry with vision")).toBeDisabled();
 });

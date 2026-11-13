@@ -168,3 +168,76 @@ def test_oversized_handwriting_pdf_stops_before_provider(monkeypatch):
         with pytest.raises(ValueError, match="handwriting_page_limit"):
             extract_handwriting(b"pdf", vision_settings())
     provider.assert_not_called()
+
+
+def test_failed_scan_automatically_uses_vision(knowledge, monkeypatch):
+    k = knowledge
+    settings = vision_settings()
+    uploaded = k.client.post(
+        "/api/v1/knowledge/submissions?title=Automatic%20scan&filename=scan.pdf",
+        headers={**k.contributor, "Content-Type": "application/pdf"},
+        content=scanned_pdf(),
+    )
+    assert approve(k, uploaded.json()["id"]).status_code == 200
+
+    def unreadable(*args, **kwargs):
+        raise ValueError("ocr_review_required")
+
+    monkeypatch.setattr("app.knowledge.worker.extract", unreadable)
+    with patch(
+        "app.knowledge.handwriting.extract_handwriting",
+        return_value=(
+            [("Page 1 (handwriting draft)", "A readable transcription.")],
+            {
+                "page_count": 1,
+                "handwriting_review_required": True,
+                "handwriting_pages": [{"page": 1, "text": "A readable transcription."}],
+            },
+        ),
+    ) as vision:
+        assert run_one(k.engine, k.store, None, settings)
+    assert vision.call_count == 1
+    with Session(k.engine) as db:
+        document = db.scalar(select(KnowledgeDocument))
+        assert document.processing_status == "succeeded"
+        assert not document.active
+        assert document.metadata_json["handwriting_review_required"]
+
+
+def test_scan_recovery_is_once_only_and_removal_is_respected(knowledge, monkeypatch):
+    from app.knowledge.worker import retry_failed_scans
+    from app.models.knowledge import ProcessingJob
+
+    k = knowledge
+    uploaded = k.client.post(
+        "/api/v1/knowledge/submissions?title=Failed%20scan&filename=failed.pdf",
+        headers={**k.contributor, "Content-Type": "application/pdf"},
+        content=scanned_pdf(),
+    )
+    assert approve(k, uploaded.json()["id"]).status_code == 200
+
+    def unreadable(*args, **kwargs):
+        raise ValueError("ocr_review_required")
+
+    monkeypatch.setattr("app.knowledge.worker.extract", unreadable)
+    assert run_one(k.engine, k.store, None)
+    retry_failed_scans(k.engine, vision_settings())
+    with Session(k.engine) as db:
+        document = db.scalar(select(KnowledgeDocument))
+        did = str(document.id)
+        assert document.metadata_json["automatic_vision_attempted"]
+        job = db.scalar(select(ProcessingJob))
+        assert job.state == "queued"
+        job.state, job.error_code = "failed", "ocr_review_required"
+        document.processing_status = "failed"
+        db.commit()
+    retry_failed_scans(k.engine, vision_settings())
+    with Session(k.engine) as db:
+        assert db.scalar(select(ProcessingJob)).state == "failed"
+    assert k.client.delete(f"/api/v1/admin/knowledge/{did}", headers=k.admin).status_code == 200
+    retry_failed_scans(k.engine, vision_settings())
+    with Session(k.engine) as db:
+        job = db.scalar(select(ProcessingJob))
+        assert job.error_code == "removed_by_admin"
+        assert job.state == "failed"
+        assert not db.scalar(select(KnowledgeDocument)).active
