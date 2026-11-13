@@ -78,7 +78,30 @@ def run_one(engine, store, embeddings, settings=None):
 
             sections, metadata = extract_handwriting(store.get(key), settings or get_settings())
         else:
-            sections, metadata = extract(filename, store.get(key), mime, allow_ocr=True)
+            data = store.get(key)
+            vision_available = mime == "application/pdf" and settings and settings.gemini_api_key
+            try:
+                sections, metadata = extract(filename, data, mime, allow_ocr=True)
+            except ValueError as exc:
+                if not vision_available or str(exc) not in {
+                    "ocr_review_required",
+                    "no_text_ocr_required",
+                }:
+                    raise
+                from app.knowledge.handwriting import extract_handwriting
+
+                sections, metadata = extract_handwriting(data, settings)
+            else:
+                # Handwriting can look confidently wrong to printed-text OCR. Let vision
+                # transcribe detected scan pages even when local OCR did not reject them.
+                if (
+                    vision_available
+                    and metadata.get("ocr_pages")
+                    and metadata.get("page_count", 0) <= 10
+                ):
+                    from app.knowledge.handwriting import extract_handwriting
+
+                    sections, metadata = extract_handwriting(data, settings)
         chunks = chunk(sections)
         if embeddings is not None and embeddings.model != model:
             raise ValueError("embedding_model_changed")
@@ -156,6 +179,7 @@ def run_one(engine, store, embeddings, settings=None):
             "handwriting_text_limit",
         }:
             code = str(exc)
+        logger.warning("knowledge_processing_error document_id=%s code=%s", did, code)
         fail(engine, jid, did, lease, code)
     return True
 
@@ -204,6 +228,45 @@ def retry_for_text_indexing(engine):
         db.commit()
 
 
+def retry_failed_scans(engine, settings):
+    """One recovery attempt per approved failed PDF; never revive removed documents."""
+    if not settings.gemini_api_key:
+        return
+    recoverable = {"ocr_review_required", "no_text_ocr_required", "text_processing_failed"}
+    with Session(engine) as db:
+        ids = list(
+            db.scalars(
+                select(ProcessingJob.document_id).where(
+                    ProcessingJob.state == "failed", ProcessingJob.error_code.in_(recoverable)
+                )
+            )
+        )
+        for did in ids:
+            document = db.scalar(
+                select(KnowledgeDocument).where(KnowledgeDocument.id == did).with_for_update()
+            )
+            job = db.scalar(
+                select(ProcessingJob).where(ProcessingJob.document_id == did).with_for_update()
+            )
+            submission = db.get(KnowledgeSubmission, document.submission_id)
+            if (
+                job.state != "failed"
+                or job.error_code not in recoverable
+                or submission.status != "approved"
+                or submission.mime != "application/pdf"
+                or document.metadata_json.get("automatic_vision_attempted")
+            ):
+                continue
+            document.metadata_json = {
+                **document.metadata_json,
+                "extraction_mode": "handwriting",
+                "automatic_vision_attempted": True,
+            }
+            document.active, document.processing_status = False, "queued"
+            job.state, job.attempts, job.error_code, job.lease_until = "queued", 0, None, None
+        db.commit()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--text-only", action="store_true")
@@ -240,6 +303,7 @@ def main():
             try:
                 if recover:
                     retry_for_text_indexing(engine)
+                    retry_failed_scans(engine, config)
                     recover = False
                 processed = run_one(engine, store, embedder, config)
             except SQLAlchemyError as exc:

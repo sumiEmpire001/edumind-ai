@@ -257,7 +257,7 @@ export default function Knowledge() {
         <section className="knowledge-card">
           <h2>Submit learning material</h2>
           <p>
-            PDF, DOCX, TXT, CSV or PPTX · up to 3 MB · scanned PDFs supported after approval (up to 40 scanned pages)
+            PDF, DOCX, TXT, CSV or PPTX · up to 3 MB · scans are detected automatically after approval; AI transcription uses Gemini quota (up to 10 PDF pages)
           </p>
           {!storageAvailable && (
             <p role="status">
@@ -494,13 +494,13 @@ export default function Knowledge() {
                     "Approved document"}
                 </h3>
                 <p>
-                  Version {d.version} · {d.processing_status} ·{" "}
+                  Version {d.version} · {d.error_code === "removed_by_admin" ? "Removed" : d.processing_status} ·{" "}
                   {d.active ? "Searchable" : "Excluded"}
                 </p>
-                {d.processing_status === "failed" && (
+                {d.processing_status === "failed" && d.error_code !== "removed_by_admin" && (
                   <p role="status">
                     {d.error_code?.startsWith("handwriting_")
-                      ? "Handwriting transcription did not finish. Check Gemini availability and quota, use a PDF of at most 10 pages, then try Read handwriting again."
+                      ? "Handwriting transcription did not finish. Check Gemini availability and quota, use a PDF of at most 10 pages, then retry processing."
                       : d.error_code === "ocr_review_required"
                       ? "The scan could not be read confidently. Upload a clearer scan or a typed transcription; handwriting and equations need manual checking."
                       : d.error_code === "ocr_page_limit"
@@ -508,7 +508,7 @@ export default function Knowledge() {
                         : "Processing did not finish. Check the original file, then retry indexing. If it fails again, upload a clearer or smaller document."}
                   </p>
                 )}
-                {d.mime === "application/pdf" && (
+                {d.mime === "application/pdf" && d.error_code !== "removed_by_admin" && (
                   <HandwritingReview key={`${d.id}-${d.version}`} id={d.id}
                     pending={!!d.metadata?.handwriting_review_required}
                     processing={busy || ["queued", "processing"].includes(d.processing_status)}
@@ -533,7 +533,7 @@ export default function Knowledge() {
                     Re-index
                   </button>
                   <button
-                    disabled={busy || d.processing_status === "failed"}
+                    disabled={busy || d.error_code === "removed_by_admin"}
                     onClick={() => {
                       if (
                         window.confirm(
@@ -549,7 +549,7 @@ export default function Knowledge() {
                         );
                     }}
                   >
-                    Remove from retrieval
+                    {d.error_code === "removed_by_admin" ? "Removed from retrieval" : "Remove from retrieval"}
                   </button>
                 </div>
               </article>

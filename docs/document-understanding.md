@@ -83,3 +83,22 @@ image rendering, protocol validation, review access controls, version safety and
 exclusion using deterministic provider responses. They do not constitute a live-model
 handwriting accuracy benchmark. Evaluate actual handwriting samples before relying on
 transcriptions for equations or numerical results.
+
+## Automatic scan processing and removal
+
+Approval now chooses the extraction path automatically. Native-text PDFs retain the
+local parser. Scans detected by local OCR (up to 10 total PDF pages) go through Gemini
+vision when configured; unreadable local OCR also falls back to vision. The optional
+advanced retry remains available, but users do not have to identify handwriting.
+Vision drafts still require transcription review before search publication.
+
+On worker startup, previously failed approved PDFs with recoverable text/OCR errors
+receive one automatic vision retry. A persistent marker prevents repeated retries
+across restarts, and removed documents are never recovered. Quota and provider failures
+remain explicit failures requiring investigation rather than an unlimited retry loop.
+
+Remove from retrieval is available even for failed documents. Removal excludes material
+from future retrieval, prevents automatic recovery, and prevents previous source-backed
+answers from being reused as model context after their source is removed or superseded.
+Saved historical answers and original files are retained; this operation is not permanent
+file deletion. The administration screen distinguishes removed documents from failures.
