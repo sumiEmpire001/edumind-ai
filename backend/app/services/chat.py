@@ -5,7 +5,7 @@ from datetime import timedelta
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -258,12 +258,31 @@ def prepare(
                 )
             )
         )
+        stale_source_messages = set(
+            db.scalars(
+                select(MessageSource.message_id)
+                .join(KnowledgeDocument, KnowledgeDocument.id == MessageSource.document_id)
+                .join(KnowledgeChunk, KnowledgeChunk.id == MessageSource.chunk_id)
+                .join(
+                    KnowledgeSubmission, KnowledgeSubmission.id == KnowledgeDocument.submission_id
+                )
+                .where(
+                    MessageSource.message_id.in_([m.id for m in previous]),
+                    or_(
+                        KnowledgeDocument.active.is_(False),
+                        KnowledgeDocument.processing_status != "succeeded",
+                        KnowledgeSubmission.status != "approved",
+                        KnowledgeChunk.version != KnowledgeDocument.version,
+                    ),
+                )
+            )
+        )
         pairs, used = [], len(current_turn.content)
         for index in range(0, len(previous), 2):
             pair = previous[index : index + 2]
             if len(pair) != 2 or pair[0].role != "assistant" or pair[1].role != "user":
                 raise HTTPException(503, "Conversation history is temporarily unavailable.")
-            if pair[0].provider == knowledge_chat.PROVIDER:
+            if pair[0].provider == knowledge_chat.PROVIDER or pair[0].id in stale_source_messages:
                 continue
             past = Turn("user", pair[1].content)
             if pair[1].attachments:
