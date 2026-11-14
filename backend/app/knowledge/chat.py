@@ -78,7 +78,8 @@ STOP_WORDS = frozenset(
         "a an the is are was were be been what why how when where which who explain "
         "describe compare summarize summarise please me my you your it this that these those "
         "in on of to for from with and or does do did can could would should about according "
-        "document material uploaded submitted answer question"
+        "document material uploaded submitted answer question write draft detailed comprehensive "
+        "words word report essay create give discuss"
     ).split()
 )
 
@@ -112,6 +113,7 @@ def evidence(engine, question):
                         "title": match["title"],
                         "location": match["location"],
                         "content": match["excerpt"],
+                        "credit": match.get("credit", ""),
                         "document_id": match["document_id"],
                         "chunk_id": match["id"],
                     }

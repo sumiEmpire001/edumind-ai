@@ -52,7 +52,7 @@ def test_flash_reasoning_is_bounded_without_relaxing_answer_limit():
     asyncio.run(p.generate([Turn("user", "Draft a substantive report section.")]))
     config = p.client.aio.models.generate_content.call_args.kwargs["config"]
     assert config.thinking_config.thinking_budget == 128
-    assert config.max_output_tokens == 4096
+    assert config.max_output_tokens == 16384
 
 
 @pytest.mark.parametrize(
@@ -73,7 +73,7 @@ def test_retry(status, code, calls):
     [
         (reply(" "), "empty_response"),
         (reply(reason=types.FinishReason.SAFETY), "provider_failure"),
-        (reply("x" * 12001), "provider_failure"),
+        (reply("x" * 60001), "provider_failure"),
     ],
 )
 def test_invalid(response, code):
@@ -126,3 +126,18 @@ def test_research_fails_closed_when_gemini_skips_grounding():
     response.candidates[0].grounding_metadata = None
     with pytest.raises(AcademicError, match="no_web_sources"):
         asyncio.run(provider([response]).research("What is current?"))
+
+
+def test_long_answer_and_token_limited_draft_are_preserved():
+    text = "Academic explanation. " * 1200
+    p = provider([reply(text), reply(text, types.FinishReason.MAX_TOKENS)])
+    assert asyncio.run(p.generate([Turn("user", "Write a detailed report")])) == text.strip()
+    partial = asyncio.run(p.generate([Turn("user", "Write a detailed report")]))
+    assert partial.startswith(text.strip())
+    assert "Response length limit reached." in partial
+
+
+def test_studio_section_keeps_its_bounded_generation_budget():
+    p = provider([reply()])
+    asyncio.run(p.generate([Turn("user", "Draft one section", output_tokens=4096)]))
+    assert p.client.aio.models.generate_content.call_args.kwargs["config"].max_output_tokens == 4096

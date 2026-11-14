@@ -15,6 +15,7 @@ class Turn:
     media: tuple[MediaPart, ...] = ()
     web_context: str = field(default="", repr=False)
     study_mode: Literal["explain", "quiz"] = "explain"
+    output_tokens: int = 16384
 
 
 class AcademicError(Exception):

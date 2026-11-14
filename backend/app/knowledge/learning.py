@@ -53,7 +53,16 @@ def ranked(db, query, expression, question, tie_breaker):
     return [
         row
         for row in candidates
-        if terms.issubset(set(re.findall(r"\w+", canonical(" ".join(str(x) for x in row)))))
+        if terms.issubset(
+            set(
+                re.findall(
+                    r"\w+",
+                    canonical(
+                        row.content if hasattr(row, "content") else row.question + " " + row.answer
+                    ),
+                )
+            )
+        )
     ][:5]
 
 
@@ -77,6 +86,7 @@ def search(db, question, *, match_title=False):
             KnowledgeChunk.content,
             KnowledgeChunk.location,
             KnowledgeDocument.id.label("document_id"),
+            KnowledgeDocument.metadata_json,
         )
         .join(KnowledgeDocument, KnowledgeDocument.id == KnowledgeChunk.document_id)
         .join(KnowledgeSubmission, KnowledgeSubmission.id == KnowledgeDocument.submission_id)
@@ -110,6 +120,7 @@ def search(db, question, *, match_title=False):
             "kind": "document",
             "id": str(r.id),
             "document_id": str(r.document_id),
+            "credit": (r.metadata_json or {}).get("credit", ""),
             "title": r.title,
             "excerpt": r.content[:1800],
             "location": r.location,
