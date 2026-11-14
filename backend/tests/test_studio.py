@@ -640,3 +640,35 @@ def test_long_pdf_layout_reports_actual_pages(tmp_path):
     assert len(pages) == result["page_count"]
     assert 30 <= len(pages) <= 45
     assert all(page.extract_text().strip() for page in pages)
+
+
+def test_long_chat_answer_import_is_complete_and_editable(studio):
+    from unittest.mock import AsyncMock
+
+    client, _, headers, provider = studio
+    content = "## Report\n\n" + "A substantive paragraph.\n\n" * 1800 + "Final conclusion."
+    provider.generate = AsyncMock(return_value=content)
+    cid = conversation(studio)
+    reply = client.post(
+        f"/api/v1/conversations/{cid}/messages",
+        headers=headers,
+        json={"request_id": str(uuid4()), "content": "Write a detailed report"},
+    )
+    assert reply.status_code == 201, reply.text
+    answer = reply.json()["messages"][-1]
+    draft = client.post(
+        "/api/v1/documents",
+        headers=headers,
+        json={
+            "client_id": str(uuid4()),
+            "title": "Long report",
+            "brief": "Develop this report.",
+            "target_pages": 30,
+            "outline": ["Imported answer", "Analysis", "Conclusions"],
+            "source_answer": {"conversation_id": cid, "message_id": answer["id"]},
+        },
+    )
+    assert draft.status_code == 201, draft.text
+    sections = draft.json()["sections"]
+    assert "".join(s["content"] for s in sections) == content
+    assert all(len(s["content"]) <= 28000 for s in sections)
