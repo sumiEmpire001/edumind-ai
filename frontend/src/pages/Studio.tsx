@@ -35,18 +35,43 @@ type Draft = {
     mode: "replace" | "append";
   } | null;
 };
-const outline = [
-  "Introduction",
-  "Background and context",
-  "Key concepts",
-  "Related approaches",
-  "Methods and framework",
-  "Detailed analysis",
-  "Worked examples",
-  "Applications",
-  "Limitations and discussion",
-  "Conclusion and next steps",
-].join("\n");
+const outline = `CHAPTER ONE
+INTRODUCTION
+1.1 BACKGROUND OF THE PROJECT
+1.2 PROBLEM STATEMENT
+1.3 OBJECTIVE OF THE PROJECT
+1.4 SIGNIFICANCE OF THE PROJECT
+1.5 LIMITATION OF THE PROJECT
+1.6 APPLICATION OF THE PROJECT
+1.7 PROJECT ORGANISATION
+CHAPTER TWO
+2.0 LITERATURE REVIEW
+2.1 HISTORICAL BACKGROUND OF ELECTRIC FANS
+2.2 HISTORICAL REVIEW OF SOLAR ENERGY
+2.3 THEORETICAL REVIEW OF SOLAR CELL
+2.4 REVIEW OF SOLAR CELL EFFICIENCY
+2.5 REVIEW OF SOLAR CELL MATERIALS
+2.6 OVERVIEW OF DC MOTOR
+2.7 DESCRIPTION OF COMPONENTS OF A DC MOTOR
+2.8 REMOTE CONTROL TECHNOLOGY
+2.9 INFRARED, LINE OF SIGHT AND OPERATING ANGLE
+2.10 REMOTE CONTROL TECHNOLOGIES
+CHAPTER THREE
+3.0 CONSTRUCTION
+3.1 BLOCK DIAGRAM
+3.2 DESCRIPTION OF PARTS OF THE BLOCK
+3.3 CONSTRUCTION PROCEDURE
+CHAPTER FOUR
+4.0 CONSTRUCTION PROCEDURE AND TESTING
+4.1 CASING AND PACKAGING
+4.2 ASSEMBLING OF SECTIONS
+4.3 TESTING OF SYSTEM OPERATION
+4.4 TROUBLE SHOOTING METHOD
+4.5 HOW TO FIX A FAN THAT HUMS
+CHAPTER FIVE
+5.0 CONCLUSION
+5.1 RECOMMENDATION
+5.2 BIBLIOGRAPHY`;
 function friendly(cause: unknown) {
   return cause instanceof ApiError && cause.status === 409
     ? "This draft changed or a section is still processing. Reload it before continuing."
@@ -231,11 +256,11 @@ export default function Studio() {
       .filter(Boolean);
     if (
       lines.length < 3 ||
-      lines.length > 18 ||
+      lines.length > 80 ||
       lines.some((h) => h.length > 100)
     ) {
       setError(
-        "Use 3–18 section headings, one per line, up to 100 characters each.",
+        "Use 3–80 outline lines, up to 100 characters each. Group long outlines under CHAPTER headings.",
       );
       return;
     }
@@ -554,13 +579,18 @@ export default function Studio() {
                 depends on your content and formatting; its actual page count is
                 shown after export.
               </p>
+              <p className="field-hint">
+                Five-chapter project template: edit the solar-fan example headings to suit
+                your project before creating it. CHAPTER lines group the numbered subsections
+                into five editable chapter drafts. Existing documents keep their saved outline.
+              </p>
               <label>
                 Outline · one section heading per line
                 <textarea
                   aria-label="Outline · one section heading per line"
-                  rows={12}
+                  rows={20}
                   value={headings}
-                  maxLength={1818}
+                  maxLength={8080}
                   onChange={(e) => setHeadings(e.target.value)}
                   required
                 />
