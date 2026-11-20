@@ -141,3 +141,39 @@ def test_studio_section_keeps_its_bounded_generation_budget():
     p = provider([reply()])
     asyncio.run(p.generate([Turn("user", "Draft one section", output_tokens=4096)]))
     assert p.client.aio.models.generate_content.call_args.kwargs["config"].max_output_tokens == 4096
+
+
+def test_overloaded_model_uses_configured_fallback():
+    p = provider([errors.APIError(503, {"error": {"message": "busy"}}), reply()])
+    p.fallback_model = "gemini-3.1-flash-lite"
+    with patch("app.ai.gemini.asyncio.sleep", new_callable=AsyncMock):
+        assert asyncio.run(p.generate([Turn("user", "Explain induction")])) == "Four"
+    calls = p.client.aio.models.generate_content.call_args_list
+    assert calls[0].kwargs["model"] == "test-model"
+    assert calls[1].kwargs["model"] == p.fallback_model
+    assert calls[1].kwargs["config"].thinking_config.thinking_level == types.ThinkingLevel.MINIMAL
+
+
+def test_slow_attempt_leaves_time_for_recovery():
+    p = provider([])
+    p.attempts = 2
+    p.total_timeout = 0.15
+    p.fallback_model = "gemini-3.1-flash-lite"
+
+    async def generate(**kwargs):
+        if kwargs["model"] == "test-model":
+            await asyncio.Event().wait()
+        return reply()
+
+    p.client.aio.models.generate_content = AsyncMock(side_effect=generate)
+    with patch("app.ai.gemini.asyncio.sleep", new_callable=AsyncMock):
+        assert asyncio.run(p.generate([Turn("user", "Explain induction")])) == "Four"
+    assert p.client.aio.models.generate_content.call_count == 2
+
+
+def test_authentication_error_does_not_switch_model():
+    p = provider([errors.APIError(401, {"error": {"message": "private"}})])
+    p.fallback_model = "gemini-3.1-flash-lite"
+    with pytest.raises(AcademicError):
+        asyncio.run(p.generate([Turn("user", "Explain induction")]))
+    assert p.client.aio.models.generate_content.call_count == 1

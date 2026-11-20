@@ -58,3 +58,13 @@ This builds retrieval knowledge, not a new model or fine-tuning dataset. Trainin
 example and evaluation counts are deliberately unchanged. Tests check six retrieval
 questions and a no-match case; they are smoke tests, not an independent benchmark
 of answer quality, reasoning, or university-wide coverage.
+
+## Provider recovery
+
+Chat generation divides its provider deadline across configured attempts. Transient
+network failures, overload and model-not-found responses can use
+`GEMINI_FALLBACK_MODEL` (default `gemini-3.1-flash-lite`) after the primary model.
+Authentication failures and safety blocks do not trigger model switching. Both
+models use the existing Gemini credentials and provider quota. This does not enable
+billing or guarantee availability during a provider-wide outage. Gemini 3 Flash
+thinking is bounded to minimal to reduce latency; long-answer output limits remain.

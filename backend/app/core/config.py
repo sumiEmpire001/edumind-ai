@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     knowledge_text_worker_enabled: bool = False
     gemini_api_key: SecretStr | None = None
     gemini_model: str = Field(default=DEFAULT_GEMINI_MODEL, pattern=r"^[a-zA-Z0-9.\-]+$")
+    gemini_fallback_model: str = Field(
+        default="gemini-3.1-flash-lite", pattern=r"^[a-zA-Z0-9.\-]+$"
+    )
     web_research_enabled: bool = True
     gemini_attempts: int = Field(default=3, ge=1, le=3)
     gemini_timeout_seconds: float = Field(default=50, ge=10, le=60)
