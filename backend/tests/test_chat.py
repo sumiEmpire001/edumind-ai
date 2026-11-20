@@ -506,7 +506,7 @@ def test_knowledge_database_failure_does_not_abort_general_answer(chat, monkeypa
         raise OperationalError("private query", {}, Exception("private details"))
 
     monkeypatch.setattr(service.knowledge_chat, "evidence", broken)
-    result = send(chat, create(chat), "Suggest electrical engineering final year project topics")
+    result = send(chat, create(chat), "Explain electrical transformer operation")
     assert result.status_code == 201
     assert len(calls) == 2
     assert chat.provider.calls == 1
@@ -528,7 +528,7 @@ def test_transient_knowledge_database_failure_retries(chat, monkeypatch):
         return []
 
     monkeypatch.setattr(service.knowledge_chat, "evidence", recover)
-    result = send(chat, create(chat), "Suggest electrical engineering final year project topics")
+    result = send(chat, create(chat), "Explain electrical transformer operation")
     assert result.status_code == 201
     assert len(calls) == 2
     assert chat.provider.calls == 1

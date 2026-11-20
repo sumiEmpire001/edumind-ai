@@ -20,7 +20,20 @@ def automatic_topic(question: str) -> str | None:
 
 def topic(question: str) -> str | None:
     match = COMMAND.match(question)
-    return question[match.end() :].strip(" :\t\n") if match else None
+    if match:
+        return question[match.end() :].strip(" :\t\n")
+    if re.search(r"\b(topic|topics|ideas)\b", question, re.I) and re.search(
+        r"\bproject\b", question, re.I
+    ):
+        from app.knowledge.starter import load_sources
+
+        for source in load_sources():
+            if (
+                source["id"].startswith("engineering-proposals-")
+                and source["discipline"].casefold() in question.casefold()
+            ):
+                return "catalogue:" + source["id"]
+    return None
 
 
 def plain_markdown(value: str) -> str:
@@ -29,6 +42,8 @@ def plain_markdown(value: str) -> str:
 
 
 def find(engine, query, *, automatic=False):
+    if query.startswith("catalogue:"):
+        return project_topics(engine, query.removeprefix("catalogue:"))
     if not 2 <= len(query) <= 2000:
         return "Enter a short topic after /knowledge, such as /knowledge Sutterby.", []
 
@@ -140,3 +155,60 @@ def evidence_prompt(references, question):
         + "\nStudent question:\n"
         + question
     )
+
+
+def project_topics(engine, source_id):
+    """Serve approved catalogue proposals without depending on model availability."""
+    from uuid import NAMESPACE_URL, uuid5
+
+    from sqlalchemy import select
+
+    from app.knowledge.starter import load_sources
+    from app.models.knowledge import KnowledgeChunk, KnowledgeDocument, KnowledgeSubmission
+
+    source = next((s for s in load_sources() if s["id"] == source_id), None)
+    if source is None:
+        return "No matching project catalogue is available.", []
+    submission_id = uuid5(NAMESPACE_URL, "edumind:starter:v1:" + source_id)
+    blocks = [
+        f"### Final-year project ideas for {source['discipline']}\n\n"
+        "Here are five proposals retrieved from the approved project catalogue. "
+        "These are suggested projects, not completed student research. "
+        "Discuss scope, equipment and originality with your supervisor."
+    ]
+    sources = []
+    with Session(engine) as db:
+        for location, content in source["sections"][::5][:5]:
+            row = db.execute(
+                select(KnowledgeChunk.id, KnowledgeDocument.id.label("document_id"))
+                .join(KnowledgeDocument, KnowledgeDocument.id == KnowledgeChunk.document_id)
+                .join(
+                    KnowledgeSubmission, KnowledgeSubmission.id == KnowledgeDocument.submission_id
+                )
+                .where(
+                    KnowledgeSubmission.id == submission_id,
+                    KnowledgeSubmission.status == "approved",
+                    KnowledgeDocument.active.is_(True),
+                    KnowledgeDocument.processing_status == "succeeded",
+                    KnowledgeChunk.version == KnowledgeDocument.version,
+                    KnowledgeChunk.location == location,
+                )
+                .order_by(KnowledgeChunk.ordinal)
+                .limit(1)
+            ).first()
+            if row is None:
+                continue
+            label = f"S{len(sources) + 1}"
+            blocks.append(f"**[{label}] {location}**\n\n{content}")
+            sources.append(
+                {
+                    "id": label,
+                    "title": source["title"],
+                    "location": location,
+                    "document_id": str(row.document_id),
+                    "chunk_id": str(row.id),
+                }
+            )
+    if not sources:
+        return "The project catalogue is currently unavailable or removed from retrieval.", []
+    return "\n\n".join(blocks), sources

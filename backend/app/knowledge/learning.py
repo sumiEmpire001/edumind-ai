@@ -49,7 +49,7 @@ def ranked(db, query, expression, question, tie_breaker):
     terms = set(re.findall(r"\w+", canonical(question)))
     if not terms:
         return []
-    candidates = list(db.execute(query.order_by(tie_breaker).limit(500)))
+    candidates = db.execute(query.order_by(tie_breaker)).yield_per(100)
     return [
         row
         for row in candidates

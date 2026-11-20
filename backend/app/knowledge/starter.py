@@ -124,6 +124,7 @@ def install(engine, store, sources=None):
     # after an older importer completed without doing so.
     if engine.dialect.name == "postgresql":
         with engine.begin() as connection:
+            connection.execute(text("SET LOCAL statement_timeout = '30s'"))
             connection.execute(
                 text("ANALYZE knowledge_chunks, knowledge_documents, knowledge_submissions")
             )
