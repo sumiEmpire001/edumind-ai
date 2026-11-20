@@ -35,43 +35,11 @@ type Draft = {
     mode: "replace" | "append";
   } | null;
 };
-const outline = `CHAPTER ONE
-INTRODUCTION
-1.1 BACKGROUND OF THE PROJECT
-1.2 PROBLEM STATEMENT
-1.3 OBJECTIVE OF THE PROJECT
-1.4 SIGNIFICANCE OF THE PROJECT
-1.5 LIMITATION OF THE PROJECT
-1.6 APPLICATION OF THE PROJECT
-1.7 PROJECT ORGANISATION
-CHAPTER TWO
+const outline = `1.0 INTRODUCTION
 2.0 LITERATURE REVIEW
-2.1 HISTORICAL BACKGROUND OF ELECTRIC FANS
-2.2 HISTORICAL REVIEW OF SOLAR ENERGY
-2.3 THEORETICAL REVIEW OF SOLAR CELL
-2.4 REVIEW OF SOLAR CELL EFFICIENCY
-2.5 REVIEW OF SOLAR CELL MATERIALS
-2.6 OVERVIEW OF DC MOTOR
-2.7 DESCRIPTION OF COMPONENTS OF A DC MOTOR
-2.8 REMOTE CONTROL TECHNOLOGY
-2.9 INFRARED, LINE OF SIGHT AND OPERATING ANGLE
-2.10 REMOTE CONTROL TECHNOLOGIES
-CHAPTER THREE
 3.0 CONSTRUCTION
-3.1 BLOCK DIAGRAM
-3.2 DESCRIPTION OF PARTS OF THE BLOCK
-3.3 CONSTRUCTION PROCEDURE
-CHAPTER FOUR
 4.0 CONSTRUCTION PROCEDURE AND TESTING
-4.1 CASING AND PACKAGING
-4.2 ASSEMBLING OF SECTIONS
-4.3 TESTING OF SYSTEM OPERATION
-4.4 TROUBLE SHOOTING METHOD
-4.5 HOW TO FIX A FAN THAT HUMS
-CHAPTER FIVE
-5.0 CONCLUSION
-5.1 RECOMMENDATION
-5.2 BIBLIOGRAPHY`;
+5.0 CONCLUSION`;
 function friendly(cause: unknown) {
   return cause instanceof ApiError && cause.status === 409
     ? "This draft changed or a section is still processing. Reload it before continuing."
@@ -124,7 +92,7 @@ function SectionEditor({
           Section text
           <textarea
             aria-label="Section text"
-            rows={20}
+            rows={7}
             value={content}
             maxLength={30000}
             disabled={busy}
@@ -580,15 +548,14 @@ export default function Studio() {
                 shown after export.
               </p>
               <p className="field-hint">
-                Five-chapter project template: edit the solar-fan example headings to suit
-                your project before creating it. CHAPTER lines group the numbered subsections
-                into five editable chapter drafts. Existing documents keep their saved outline.
+                Five chapter headings only, numbered 1.0–5.0. Edit the chapter names
+                to suit your project. No subsection headings are included.
               </p>
               <label>
                 Outline · one section heading per line
                 <textarea
                   aria-label="Outline · one section heading per line"
-                  rows={20}
+                  rows={7}
                   value={headings}
                   maxLength={8080}
                   onChange={(e) => setHeadings(e.target.value)}

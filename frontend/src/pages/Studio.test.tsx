@@ -76,7 +76,13 @@ it("creates a long-form draft with the user's outline and page target", async ()
   expect(JSON.parse(create![1].body)).toMatchObject({
     target_pages: 45,
     title: "Mechanics",
-    outline: expect.arrayContaining(["CHAPTER ONE", "1.1 BACKGROUND OF THE PROJECT", "CHAPTER FIVE", "5.2 BIBLIOGRAPHY"]),
+    outline: [
+      "1.0 INTRODUCTION",
+      "2.0 LITERATURE REVIEW",
+      "3.0 CONSTRUCTION",
+      "4.0 CONSTRUCTION PROCEDURE AND TESTING",
+      "5.0 CONCLUSION",
+    ],
   });
   expect(screen.getByRole("button", { name: "Download PDF" })).toBeDisabled();
 });
