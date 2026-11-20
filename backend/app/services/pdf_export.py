@@ -27,6 +27,8 @@ from reportlab.platypus import (
 )
 from reportlab.platypus.tableofcontents import TableOfContents
 
+from app.services.export_format import WIDTH, blocks, column_widths, spans
+
 slots = BoundedSemaphore(2)
 font_dir = Path(reportlab.__file__).parent / "fonts"
 system_fonts = Path("/usr/share/fonts/truetype/dejavu")
@@ -36,7 +38,12 @@ for name, file in [
     ("Studio-Italic", "VeraIt.ttf"),
     ("Studio-BoldItalic", "VeraBI.ttf"),
 ]:
-    unicode_name = "DejaVuSans-Bold.ttf" if "Bold" in name else "DejaVuSans.ttf"
+    unicode_name = {
+        "Studio": "DejaVuSerif.ttf",
+        "Studio-Bold": "DejaVuSerif-Bold.ttf",
+        "Studio-Italic": "DejaVuSerif-Italic.ttf",
+        "Studio-BoldItalic": "DejaVuSerif-BoldItalic.ttf",
+    }[name]
     unicode_font = system_fonts / unicode_name
     pdfmetrics.registerFont(
         TTFont(name, str(unicode_font if unicode_font.exists() else font_dir / file))
@@ -51,7 +58,7 @@ pdfmetrics.registerFontFamily(
 
 styles = {
     "body": ParagraphStyle(
-        "body", fontName="Studio", fontSize=10.5, leading=16, spaceAfter=9, splitLongWords=True
+        "body", fontName="Studio", fontSize=12, leading=18, spaceAfter=9, splitLongWords=True
     ),
     "heading": ParagraphStyle(
         "heading",
@@ -60,7 +67,7 @@ styles = {
         leading=23,
         spaceAfter=14,
         keepWithNext=True,
-        textColor=colors.HexColor("#173c34"),
+        textColor=colors.black,
     ),
     "subheading": ParagraphStyle(
         "subheading",
@@ -96,9 +103,18 @@ styles = {
 
 
 def inline(value):
-    value = escape(value.replace("\u2011", "-").replace("\u2013", "-").replace("\u2014", "-"))
-    value = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", value)
-    return re.sub(r"`([^`]+)`", r"<font name='Courier'>\1</font>", value)
+    parts = []
+    for text, kind in spans(value):
+        text = escape(text)
+        tag = {"bold": "b", "italic": "i"}.get(kind)
+        parts.append(
+            f"<{tag}>{text}</{tag}>"
+            if tag
+            else f"<font name='Courier'>{text}</font>"
+            if kind == "code"
+            else text
+        )
+    return "".join(parts)
 
 
 class Document(BaseDocTemplate):
@@ -118,66 +134,61 @@ class Document(BaseDocTemplate):
 
 
 def markdown(content):
-    flow, lines, i = [], content.splitlines(), 0
-    while i < len(lines):
-        line = lines[i].strip()
-        if not line:
-            i += 1
-            continue
-        if line.startswith("```"):
-            code = []
-            i += 1
-            while i < len(lines) and not lines[i].strip().startswith("```"):
-                code.append(lines[i])
-                i += 1
-            # Separate paragraphs allow long code blocks to split across pages.
-            for source_line in code:
-                flow.append(
+    flow = []
+    for kind, value, level in blocks(content):
+        if kind == "table":
+            widths = column_widths(value)
+            # Very wide tables stay readable as text; no rows are discarded.
+            if len(widths) > 6:
+                flow.extend(Paragraph(inline(" | ".join(row)), styles["body"]) for row in value)
+                continue
+            cell_style = ParagraphStyle(
+                "cell", parent=styles["body"], fontSize=10, leading=14, spaceAfter=0
+            )
+            data = [
+                [
                     Paragraph(
-                        escape(source_line).replace(" ", "&#160;") or "&#160;", styles["code"]
+                        ("<b>" + inline(cell) + "</b>") if index == 0 else inline(cell), cell_style
                     )
-                )
-        elif (
-            line.startswith("|")
-            and i + 1 < len(lines)
-            and re.match(r"^\|?\s*:?-", lines[i + 1].strip())
-        ):
-            rows = []
-            while i < len(lines) and lines[i].strip().startswith("|"):
-                values = [cell.strip() for cell in lines[i].strip().strip("|").split("|")]
-                if not all(re.fullmatch(r"[:\-\s]+", cell) for cell in values):
-                    rows.append(values)
-                i += 1
-            i -= 1
-            columns = max(map(len, rows))
-            if columns <= 6 and all(len(cell) < 400 for row in rows for cell in row):
-                data = [
-                    [
-                        Paragraph(inline(cell), styles["small"])
-                        for cell in row + [""] * (columns - len(row))
-                    ]
-                    for row in rows
+                    for cell in row + [""] * (len(widths) - len(row))
                 ]
-                table = Table(data, colWidths=[(A4[0] - 100) / columns] * columns, repeatRows=1)
-                table.setStyle(
-                    TableStyle(
-                        [
-                            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e3eee8")),
-                            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                            ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cad8d0")),
-                            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                            ("TOPPADDING", (0, 0), (-1, -1), 7),
-                        ]
-                    )
+                for index, row in enumerate(value)
+            ]
+            table = Table(data, colWidths=widths, repeatRows=1, splitInRow=1)
+            table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eaeaea")),
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#d9d9d9")),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                        ("TOPPADDING", (0, 0), (-1, -1), 5),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                    ]
                 )
-                flow.extend([table, Spacer(1, 12)])
-            else:
-                flow.extend(Paragraph(inline(" | ".join(row)), styles["body"]) for row in rows)
-        elif line.startswith("#"):
-            flow.append(Paragraph(inline(line.lstrip("# ")), styles["subheading"]))
+            )
+            flow.extend([table, Spacer(1, 12)])
+        elif kind == "code":
+            flow.append(Paragraph(escape(value).replace(" ", "&#160;") or "&#160;", styles["code"]))
+        elif kind == "heading":
+            style = ParagraphStyle(
+                f"heading{level}", parent=styles["subheading"], fontSize=14 if level == 2 else 12
+            )
+            flow.append(Paragraph(inline(value), style))
+        elif kind == "list":
+            style = ParagraphStyle(
+                "list",
+                parent=styles["body"],
+                leftIndent=18 * (level + 1),
+                firstLineIndent=0,
+                bulletIndent=18 * level,
+                bulletFontName="Studio",
+                bulletFontSize=12,
+            )
+            flow.append(Paragraph(inline(value[1]), style, bulletText=value[0]))
         else:
-            flow.append(Paragraph(inline(line), styles["body"]))
-        i += 1
+            flow.append(Paragraph(inline(value), styles["body"]))
     return flow
 
 
@@ -190,10 +201,10 @@ def render(title, author, sections, note=""):
     document = Document(
         output,
         pagesize=A4,
-        leftMargin=50,
-        rightMargin=50,
-        topMargin=57,
-        bottomMargin=53,
+        leftMargin=72,
+        rightMargin=72,
+        topMargin=72,
+        bottomMargin=72,
         title=title,
         author=author,
         pageCompression=1,
@@ -203,15 +214,15 @@ def render(title, author, sections, note=""):
         canvas.saveState()
         canvas.setFont("Studio", 8)
         canvas.setFillColor(colors.HexColor("#52645e"))
-        canvas.drawString(50, A4[1] - 32, "EDUMIND STUDIO")
-        canvas.drawRightString(A4[0] - 50, 29, f"Page {doc.page}")
+
+        canvas.drawCentredString(A4[0] / 2, 36, f"Page {doc.page}")
         canvas.restoreState()
 
     frame = Frame(
-        50,
-        53,
-        A4[0] - 100,
-        A4[1] - 110,
+        72,
+        72,
+        WIDTH,
+        A4[1] - 144,
         id="normal",
         leftPadding=0,
         rightPadding=0,
@@ -222,7 +233,9 @@ def render(title, author, sections, note=""):
     story = [
         Spacer(1, 110),
         Paragraph(inline(title), styles["cover"]),
-        Paragraph(inline(author), styles["body"]),
+        Paragraph(
+            inline(author), ParagraphStyle("author", parent=styles["body"], alignment=TA_CENTER)
+        ),
     ]
     if note:
         story.append(Paragraph(inline(note), styles["small"]))
