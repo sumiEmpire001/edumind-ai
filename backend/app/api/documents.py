@@ -156,6 +156,25 @@ def create(data: DocumentCreate, request: Request, db: DB, identity: Current):
             answer.content,
             flags=re.IGNORECASE,
         )
+    # Keep imported long answers editable within the per-section editor limit.
+    if len(sections[0]["content"]) > 28000:
+        remaining = sections[0]["content"]
+        imported = []
+        while remaining:
+            end = min(len(remaining), 28000)
+            if end < len(remaining):
+                boundary = remaining.rfind("\n", 14000, end)
+                if boundary > 0:
+                    end = boundary + 1
+            imported.append(
+                {
+                    "title": sections[0]["title"] + f" (part {len(imported) + 1})",
+                    "content": remaining[:end],
+                    "last_request_id": None,
+                }
+            )
+            remaining = remaining[end:]
+        sections = imported + sections[1:]
     conversation = Conversation(
         id=uuid4(),
         owner_id=identity.user.id,

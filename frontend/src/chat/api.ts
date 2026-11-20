@@ -74,7 +74,7 @@ export function message(value: unknown): Message {
     Number(m.sequence) < 1 ||
     !["user", "assistant"].includes(String(m.role)) ||
     typeof m.content !== "string" ||
-    m.content.length > 12000 ||
+    m.content.length > 80000 ||
     !(m.provider === null || typeof m.provider === "string") ||
     !date(m.created_at)
   )

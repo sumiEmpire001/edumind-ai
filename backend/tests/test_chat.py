@@ -246,7 +246,7 @@ class FailingProvider(FixtureProvider):
         (AcademicError("rate_limited"), 429, "rate_limited"),
         ("", 502, "empty_response"),
         (" " * 10, 502, "empty_response"),
-        ("x" * 12001, 502, "provider_failure"),
+        ("x" * 64001, 502, "provider_failure"),
         (RuntimeError("private-provider-secret"), 502, "provider_failure"),
     ],
 )
@@ -478,3 +478,17 @@ def test_quiz_uses_tutor_context_and_skips_web_search(chat):
     assert [turn.role for turn in context] == ["user", "assistant", "user"]
     assert context[-1].study_mode == "quiz"
     search.assert_not_awaited()
+
+
+def test_long_answer_saved_replayed_and_retained_for_followup(chat):
+    text = "## Analysis\n\n" + "Evidence and explanation. " * 1800 + "\n\nFinal conclusion."
+    chat.provider.generate = AsyncMock(return_value=text)
+    cid, rid = create(chat), uuid4()
+    response = send(chat, cid, "Write a detailed academic explanation", rid)
+    assert response.status_code == 201, response.text
+    assert response.json()["messages"][-1]["content"] == text
+    assert send(chat, cid, "Write a detailed academic explanation", rid).json()["replayed"]
+    assert chat.provider.generate.await_count == 1
+    assert send(chat, cid, "Continue the previous answer").status_code == 201
+    context = chat.provider.generate.call_args.args[0]
+    assert any(turn.role == "assistant" and turn.content == text for turn in context)

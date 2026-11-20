@@ -934,6 +934,17 @@ export default function Chat() {
                     )}
                   />
                 )}
+                {m.role === "assistant" &&
+                  m.content.includes("Response length limit reached.") &&
+                  m.id === data.messages.at(-1)?.id && (
+                    <button type="button" disabled={sending || pending || !canSend}
+                      onClick={() => {
+                        setDraft("Continue the previous answer from where it stopped. Keep the same structure and do not repeat earlier sections.");
+                        document.getElementById("academic-question")?.focus();
+                      }}>
+                      Continue answer
+                    </button>
+                  )}
                 <details className="study-message-tools">
                   <summary>
                     {m.role === "user" ? "Question actions" : "Answer actions"}
