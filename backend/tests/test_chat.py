@@ -492,3 +492,44 @@ def test_long_answer_saved_replayed_and_retained_for_followup(chat):
     assert send(chat, cid, "Continue the previous answer").status_code == 201
     context = chat.provider.generate.call_args.args[0]
     assert any(turn.role == "assistant" and turn.content == text for turn in context)
+
+
+def test_knowledge_database_failure_does_not_abort_general_answer(chat, monkeypatch):
+    from sqlalchemy.exc import OperationalError
+
+    from app.services import chat as service
+
+    calls = []
+
+    def broken(*args):
+        calls.append(1)
+        raise OperationalError("private query", {}, Exception("private details"))
+
+    monkeypatch.setattr(service.knowledge_chat, "evidence", broken)
+    result = send(chat, create(chat), "Suggest electrical engineering final year project topics")
+    assert result.status_code == 201
+    assert len(calls) == 2
+    assert chat.provider.calls == 1
+    assert "Knowledge library lookup is temporarily unavailable" in str(result.json())
+    assert "private details" not in str(result.json())
+
+
+def test_transient_knowledge_database_failure_retries(chat, monkeypatch):
+    from sqlalchemy.exc import OperationalError
+
+    from app.services import chat as service
+
+    calls = []
+
+    def recover(*args):
+        calls.append(1)
+        if len(calls) == 1:
+            raise OperationalError("query", {}, Exception("connection interrupted"))
+        return []
+
+    monkeypatch.setattr(service.knowledge_chat, "evidence", recover)
+    result = send(chat, create(chat), "Suggest electrical engineering final year project topics")
+    assert result.status_code == 201
+    assert len(calls) == 2
+    assert chat.provider.calls == 1
+    assert "temporarily unavailable" not in str(result.json())

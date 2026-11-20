@@ -536,9 +536,27 @@ async def submit(
                 web_notice = "Web research is currently unavailable.\n\n"
         references = []
         if not data.attachment_ids and not config.rag_enabled:
-            references = ticket.continuation_sources or await run_in_threadpool(
-                knowledge_chat.evidence, engine, data.content
-            )
+            for attempt in range(2):
+                try:
+                    references = ticket.continuation_sources or await run_in_threadpool(
+                        knowledge_chat.evidence, engine, data.content
+                    )
+                    break
+                except SQLAlchemyError as exc:
+                    # Each evidence call owns its session, so retry never reuses an
+                    # aborted transaction. Do not log SQL, parameters or credentials.
+                    logger.warning(
+                        "knowledge_lookup_failed kind=%s sqlstate=%s attempt=%s",
+                        type(exc).__name__,
+                        getattr(getattr(exc, "orig", None), "sqlstate", None),
+                        attempt + 1,
+                        extra={"request_id": trace},
+                    )
+                    if attempt == 1:
+                        web_notice += (
+                            "Knowledge library lookup is temporarily unavailable. "
+                            "This answer uses general knowledge, not your uploaded materials.\n\n"
+                        )
             if references:
                 context = [
                     *context[:-1],
