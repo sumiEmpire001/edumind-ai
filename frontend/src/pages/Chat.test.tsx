@@ -331,3 +331,22 @@ it("opens a Studio draft seeded from the selected saved answer", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Create Studio draft" }));
   expect(await screen.findByRole("heading", { name: "Studio draft" })).toBeInTheDocument();
 });
+
+it("keeps a long answer readable and prepares continuation without sending automatically", async () => {
+  const longAnswer = "## Detailed report\n\n" + "Evidence and reasoning. ".repeat(1500)
+    + "\n\n> Response length limit reached. Use Continue answer to carry on.";
+  const saved = setup(true, (path) => {
+    if (path.endsWith(`/conversations/${cid}`)) return json({
+      conversation,
+      messages: [{ id: "99054420-9894-4a48-bfa0-bb7bf748d823", request_id: "8cb0af80-4543-447f-8f02-09b7c8ad90d0", sequence: 2,
+        role: "assistant", content: longAnswer, provider: "verification", created_at: created }],
+      requests: [], has_older: false,
+    });
+    return null;
+  });
+  expect(await screen.findByRole("heading", { name: "Detailed report" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Continue answer" }));
+  expect(screen.getByLabelText("Your question")).toHaveValue(
+    "Continue the previous answer from where it stopped. Keep the same structure and do not repeat earlier sections.");
+  expect(saved.fetcher.mock.calls.filter(([url]) => pathOf(url).endsWith("/messages"))).toHaveLength(0);
+});

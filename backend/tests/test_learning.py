@@ -334,6 +334,14 @@ def test_study_chat_checks_index_for_natural_document_question(knowledge):
     assert "approved project" in prompt
     assert "Student question:\nWhat is Sutterby Nanofluid" in prompt
     assert "rather than copying passages" in prompt
+    continuation = k.client.post(
+        route,
+        headers=student,
+        json={"request_id": str(uuid4()), "content": "Continue the previous answer"},
+    )
+    assert continuation.status_code == 201, continuation.text
+    assert "Reference materials retrieved" in continuation.json()["messages"][-1]["content"]
+    assert "approved project" in provider.contexts[-1][-1].content
     documents = k.client.get("/api/v1/admin/knowledge", headers=k.admin).json()
     assert (
         k.client.delete(

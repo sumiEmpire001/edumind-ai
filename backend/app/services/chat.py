@@ -194,6 +194,7 @@ def fail(request: ChatRequest, code: str) -> None:
 class Ticket:
     context: list[Turn]
     cached: TurnResult | None = None
+    continuation_sources: list | None = None
 
 
 def prepare(
@@ -230,6 +231,8 @@ def prepare(
         current_turn, attachment_metadata = attach_turn(
             db, owner, cid, data.content, data.attachment_ids, store, data.request_id
         )
+        if db.scalar(select(StudioDocument.id).where(StudioDocument.conversation_id == cid)):
+            current_turn = replace(current_turn, output_tokens=4096)
         active = list(
             db.scalars(
                 select(ChatRequest).where(
@@ -307,6 +310,34 @@ def prepare(
             used += cost
             pairs.append([past, Turn("assistant", pair[0].content)])
         context = [turn for pair in reversed(pairs) for turn in pair] + [current_turn]
+        continuation_sources = []
+        if (
+            data.content.casefold().startswith("continue")
+            and pairs
+            and previous
+            and previous[0].content == pairs[0][1].content
+            and previous[0].id not in stale_source_messages
+        ):
+            for source in db.scalars(
+                select(MessageSource)
+                .where(MessageSource.message_id == previous[0].id)
+                .order_by(MessageSource.label)
+                .limit(5)
+            ):
+                passage = db.get(KnowledgeChunk, source.chunk_id)
+                continuation_sources.append(
+                    {
+                        "id": source.label,
+                        "title": source.title,
+                        "location": source.location,
+                        "document_id": str(source.document_id),
+                        "chunk_id": str(source.chunk_id),
+                        "content": passage.content,
+                        "credit": db.get(KnowledgeDocument, source.document_id).metadata_json.get(
+                            "credit", ""
+                        ),
+                    }
+                )
         request = ChatRequest(
             id=data.request_id,
             conversation_id=cid,
@@ -341,7 +372,7 @@ def prepare(
         except IntegrityError:
             db.rollback()
             raise HTTPException(409, "This request identifier cannot be used.") from None
-        return Ticket(context)
+        return Ticket(context, continuation_sources=continuation_sources)
 
 
 def complete(
@@ -505,7 +536,9 @@ async def submit(
                 web_notice = "Web research is currently unavailable.\n\n"
         references = []
         if not data.attachment_ids and not config.rag_enabled:
-            references = await run_in_threadpool(knowledge_chat.evidence, engine, data.content)
+            references = ticket.continuation_sources or await run_in_threadpool(
+                knowledge_chat.evidence, engine, data.content
+            )
             if references:
                 context = [
                     *context[:-1],
@@ -517,7 +550,7 @@ async def submit(
         answer = await asyncio.wait_for(provider.generate(context), config.chat_timeout_seconds)
         if not isinstance(answer, str) or not answer.strip():
             raise AcademicError("empty_response")
-        if len(answer) > 12000:
+        if len(answer) > 64000:
             raise AcademicError("provider_failure")
         sources = getattr(answer, "sources", []) or references
         if sources:
@@ -534,11 +567,18 @@ async def submit(
                 + "\n".join(
                     f"- [{source['id']}] {knowledge_chat.plain_markdown(source['title'])}"
                     f" — {knowledge_chat.plain_markdown(source['location'] or '')}"
+                    + (
+                        f" — {knowledge_chat.plain_markdown(source['credit'])}"
+                        if source.get("credit")
+                        else ""
+                    )
                     for source in sources
                 )
             )
-        remaining = 12000 - len(web_sources) - len(web_notice)
-        answer = web_notice + answer.strip()[:remaining].rstrip() + web_sources
+        # Preserve the full answer and all verified references; never silently slice prose.
+        answer = web_notice + answer.strip() + web_sources
+        if len(answer) > 80000:
+            raise AcademicError("provider_failure")
     except TimeoutError:
         code = "timeout"
     except AcademicError as exc:

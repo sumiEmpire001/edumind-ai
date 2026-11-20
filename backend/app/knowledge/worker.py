@@ -302,6 +302,13 @@ def main():
         while running:
             try:
                 if recover:
+                    if os.environ.get("KNOWLEDGE_STARTER_ENABLED") == "true":
+                        from app.knowledge.starter import install
+
+                        try:
+                            install(engine, store)
+                        except Exception as exc:
+                            logger.warning("knowledge_starter_failed kind=%s", type(exc).__name__)
                     retry_for_text_indexing(engine)
                     retry_failed_scans(engine, config)
                     recover = False
