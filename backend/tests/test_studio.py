@@ -672,3 +672,64 @@ def test_long_chat_answer_import_is_complete_and_editable(studio):
     sections = draft.json()["sections"]
     assert "".join(s["content"] for s in sections) == content
     assert all(len(s["content"]) <= 28000 for s in sections)
+
+
+def test_chapter_outline_groups_preserves_and_guides_generation(studio):
+    client, _, headers, provider = studio
+    outline = [
+        "CHAPTER ONE",
+        "INTRODUCTION",
+        "1.1 BACKGROUND",
+        "1.2 PROBLEM STATEMENT",
+        "CHAPTER TWO",
+        "2.0 LITERATURE REVIEW",
+        "2.1 SOLAR ENERGY",
+        "CHAPTER THREE",
+        "3.0 CONSTRUCTION",
+        "3.1 BLOCK DIAGRAM",
+        "CHAPTER FOUR",
+        "4.0 TESTING",
+        "4.1 SYSTEM OPERATION",
+        "CHAPTER FIVE",
+        "5.0 CONCLUSION",
+        "5.1 RECOMMENDATION",
+        "5.2 BIBLIOGRAPHY",
+    ]
+    result = client.post(
+        "/api/v1/documents",
+        headers=headers,
+        json={
+            "client_id": str(uuid4()),
+            "title": "Solar fan",
+            "brief": "Develop a solar powered fan project report.",
+            "target_pages": 30,
+            "outline": outline,
+        },
+    )
+    assert result.status_code == 201, result.text
+    doc = result.json()
+    assert len(doc["sections"]) == 5
+    assert doc["sections"][0]["title"] == "CHAPTER ONE — INTRODUCTION"
+    assert doc["sections"][4]["content"] == "## 5.1 RECOMMENDATION\n\n## 5.2 BIBLIOGRAPHY"
+    edited = client.patch(
+        f"/api/v1/documents/{doc['id']}/sections/0",
+        headers=headers,
+        json={
+            "revision": doc["revision"],
+            "title": doc["sections"][0]["title"],
+            "content": "## 1.1 PROJECT BACKGROUND\n\nSome saved text.\n\n## 1.2 PROBLEM STATEMENT",
+        },
+    )
+    assert edited.status_code == 200
+    doc = edited.json()
+    assert doc["sections"][0]["subheadings"][0] == "1.1 PROJECT BACKGROUND"
+    generated = generation(client, headers, doc)
+    assert generated.status_code == 200, generated.text
+    prompt = provider.contexts[-1][-1].content
+    assert "1.1 PROJECT BACKGROUND" in prompt and "1.2 PROBLEM STATEMENT" in prompt
+    assert "EVERY subsection" in prompt
+    for endpoint in ("export", "export-word"):
+        assert (
+            client.post(f"/api/v1/documents/{doc['id']}/{endpoint}", headers=headers).status_code
+            == 200
+        )
