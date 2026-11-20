@@ -62,6 +62,8 @@ class GeminiProvider:
     def __init__(self, config: Settings):
         self.model = config.gemini_model
         self.attempts = config.gemini_attempts
+        self.fallback_model = config.gemini_fallback_model
+        self.total_timeout = min(config.gemini_timeout_seconds, config.chat_timeout_seconds - 1)
         self.client = genai.Client(
             api_key=config.gemini_api_key.get_secret_value(),
             http_options=types.HttpOptions(
@@ -126,12 +128,26 @@ class GeminiProvider:
         return grounded_result(response)
 
     async def _generate(self, contents, config, attempts: int, *, allow_partial=False):
+        deadline = asyncio.get_running_loop().time() + getattr(self, "total_timeout", 50)
+        fallback = getattr(self, "fallback_model", None)
         for attempt in range(attempts):
+            model = fallback if attempt and fallback else self.model
+            remaining = deadline - asyncio.get_running_loop().time()
+            if remaining <= 0:
+                raise AcademicError("timeout")
+            # Reserve time for recovery after an overloaded endpoint.
+            budget = remaining if attempt + 1 == attempts else remaining / (attempts - attempt)
+            attempt_config = config.model_copy(deep=True)
+            if model.startswith("gemini-3.") and "flash" in model:
+                attempt_config.thinking_config = types.ThinkingConfig(thinking_level="minimal")
+            elif model.startswith("gemini-2.5-flash"):
+                attempt_config.thinking_config = types.ThinkingConfig(thinking_budget=128)
             try:
-                response = await self.client.aio.models.generate_content(
-                    model=self.model,
-                    contents=contents,
-                    config=config,
+                response = await asyncio.wait_for(
+                    self.client.aio.models.generate_content(
+                        model=model, contents=contents, config=attempt_config
+                    ),
+                    timeout=budget,
                 )
                 candidates = response.candidates or []
                 if not candidates or candidates[0].finish_reason not in {
@@ -164,16 +180,20 @@ class GeminiProvider:
                     if needle in raw:
                         reason = label
                         break
-                logger.error("gemini_api_error status=%s reason=%s", exc.code, reason)
+                logger.error(
+                    "gemini_api_error model=%s status=%s reason=%s", model, exc.code, reason
+                )
                 code = "rate_limited" if exc.code == 429 else "provider_failure"
-                retry = exc.code in {429, 500, 502, 503, 504}
+                retry = exc.code in {429, 500, 502, 503, 504} or (
+                    exc.code == 404 and bool(fallback)
+                )
             except (httpx.TimeoutException, TimeoutError):
                 code, retry = "timeout", True
             except httpx.TransportError:
                 code, retry = "provider_failure", True
             if not retry or attempt + 1 == attempts:
                 raise AcademicError(code) from None
-            logger.warning("gemini_retry category=%s attempt=%s", code, attempt + 1)
+            logger.warning("gemini_retry model=%s category=%s attempt=%s", model, code, attempt + 1)
             await asyncio.sleep(min(2**attempt, 4) + random.uniform(0, 0.25))
         raise AcademicError()
 
