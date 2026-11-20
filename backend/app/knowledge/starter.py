@@ -119,5 +119,14 @@ def install(engine, store, sources=None):
             db.commit()
             installed += 1
             logger.info("knowledge_starter_imported source=%s chunks=%s", source["id"], len(chunks))
+    # Bulk imports change the cardinality by thousands of passages. Refresh
+    # planner statistics before the first student lookup, including on restart
+    # after an older importer completed without doing so.
+    if engine.dialect.name == "postgresql":
+        with engine.begin() as connection:
+            connection.execute(
+                text("ANALYZE knowledge_chunks, knowledge_documents, knowledge_submissions")
+            )
+        logger.info("knowledge_search_statistics_refreshed")
     logger.info("knowledge_starter_complete installed=%s", installed)
     return installed
