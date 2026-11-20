@@ -79,7 +79,7 @@ it("creates a long-form draft with the user's outline and page target", async ()
     outline: [
       "1.0 INTRODUCTION",
       "2.0 LITERATURE REVIEW",
-      "3.0 CONSTRUCTION",
+      "3.0 METHODOLOGY",
       "4.0 CONSTRUCTION PROCEDURE AND TESTING",
       "5.0 CONCLUSION",
     ],
