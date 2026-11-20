@@ -211,7 +211,9 @@ def prepare(
     with Session(engine, expire_on_commit=False) as db:
         user = live_identity(db, owner, sid)
         explicit_search = (
-            data.study_mode == "explain" and knowledge_chat.topic(data.content) is not None
+            data.study_mode == "explain"
+            and (knowledge_query := knowledge_chat.topic(data.content)) is not None
+            and not knowledge_query.startswith("catalogue:")
         )
         if explicit_search and user.role not in {"admin", "contributor"}:
             raise HTTPException(403, "Contributor or administrator access required.")
